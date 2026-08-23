@@ -38,15 +38,23 @@ for(let i=2;i<=11;i++){ $('#mUsuario').value='usuario'+i; $('#btnAñadir').click
 comprueba('11 etiquetas -> 2 páginas', d.querySelectorAll('.pagina').length===2, d.querySelectorAll('.pagina').length);
 comprueba('el subtítulo dice 2 hojas', /11 etiquetas · 2 hojas/.test($('#sub').textContent), $('#sub').textContent);
 
-// --- histórico: guardar selección ---
+// --- guardar selección: NO crea histórico ---
 comprueba('el botón Guardar selección existe', !!$('#btnGuardar'));
 $('#btnGuardar').click();
+comprueba('guardar selección NO crea una venta', w.localStorage.getItem('vinted.historico')===null,
+          w.localStorage.getItem('vinted.historico'));
+comprueba('guardar selección NO vacía la cola', d.querySelectorAll('#colaWrap ul.cola > li').length===11);
+comprueba('deja la cola guardada', JSON.parse(w.localStorage.getItem('vinted.etiquetas')).length===11);
+comprueba('el histórico sigue vacío en pantalla', d.querySelectorAll('ul.hist > li').length===0);
+
+// --- el histórico solo nace al imprimir ---
+$('#btnImprimir').click();
 let hist=JSON.parse(w.localStorage.getItem('vinted.historico'));
-comprueba('guarda la venta en el histórico', hist.length===1, JSON.stringify(hist&&hist.length));
+comprueba('imprimir sí crea la venta', hist.length===1, JSON.stringify(hist&&hist.length));
 comprueba('con las 11 etiquetas dentro', hist[0].etiquetas.length===11);
 comprueba('el nombre es "Venta dd/mm/aaaa hh:mm"', /^Venta \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(hist[0].nombre), hist[0].nombre);
-comprueba('guardar NO vacía la cola', d.querySelectorAll('#colaWrap ul.cola > li').length===11);
 comprueba('sale en la lista de ventas', d.querySelectorAll('ul.hist > li').length===1);
+$('#noVaciar').click();
 
 // --- desplegar ---
 const cab=$('ul.hist .cab');
@@ -59,7 +67,7 @@ comprueba('se vuelve a plegar', $('ul.hist .cuerpo').hidden===true);
 
 // --- imprimir ---
 $('#btnImprimir').click();
-comprueba('imprimir llama a window.print()', w.__imprimio===1);
+comprueba('imprimir llama a window.print()', w.__imprimio===2, w.__imprimio);
 hist=JSON.parse(w.localStorage.getItem('vinted.historico'));
 comprueba('imprimir archiva otra venta', hist.length===2);
 comprueba('la más nueva va primero', hist[0].cuando>=hist[1].cuando);

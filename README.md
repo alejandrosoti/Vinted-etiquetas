@@ -22,13 +22,15 @@ Cada tanda que imprimes queda archivada con su fecha y su hora: **Venta
 23/08/2026 19:52**. Aparece en «Ventas guardadas», plegada; al tocarla se abre y
 se ve quién iba dentro — usuario, artículo y transportista de cada etiqueta.
 
-Se guarda una venta de dos maneras:
+Una venta nace **solo al imprimir**, no antes. Hasta ese momento lo que tienes
+es una selección en curso, que se guarda sola pero no es historia todavía.
 
-- **Imprimir A4** — archiva y saca el papel. Después pregunta si la impresión ha
-  salido bien: **Sí, vaciar la cola** la deja limpia para la tanda siguiente,
-  **No, dejarla** no toca nada, por si hay que repetir.
-- **Guardar selección** — archiva sin imprimir, y la cola se queda como está.
-  Para dejar constancia de una tanda a medias, o antes de vaciar.
+- **Imprimir A4** — archiva la tanda y saca el papel. Después pregunta si la
+  impresión ha salido bien: **Sí, vaciar la cola** la deja limpia para la
+  siguiente, **No, dejarla** no toca nada, por si hay que repetir.
+- **Guardar selección** — *no* archiva nada. Solo fuerza el guardado de la cola
+  y te lo confirma. La cola ya se guarda sola en cada alta y cada baja; el botón
+  está para verlo por escrito antes de cerrar.
 
 **Devolver a la cola** recupera esas etiquetas y las añade **al final** de lo que
 haya ahora, con identificadores nuevos. Sirve para reimprimir una venta o para
@@ -49,8 +51,10 @@ Un par de detalles que conviene saber:
   aparece en el ordenador; no hay servidor que lo sincronice.
 - **Imprimir no vacía la cola.** Si ya has impreso y no quieres volver a sacar
   las mismas, dale a **Vaciar** (pide confirmación: hay que tocarlo dos veces).
-- Se pierde si borras los datos del sitio en el navegador, o si navegas de
-  incógnito.
+- **En incógnito no sobrevive.** Una ventana privada tira todo lo que guarda el
+  sitio en cuanto la cierras; es lo que significa ser privada, y ninguna página
+  puede evitarlo desde dentro. Para trabajar en varias sesiones, ventana normal.
+- Se pierde también si borras los datos del sitio en el navegador.
 
 ## Probar en local
 
@@ -67,8 +71,8 @@ Una sola clave de `localStorage`, sin servidor ni base de datos:
 
 | Clave | Qué guarda |
 |---|---|
-| `vinted.etiquetas` | la cola actual: usuario, artículo, transportista y orden |
-| `vinted.historico` | las ventas archivadas, la más reciente primero |
+| `vinted.etiquetas` | la selección en curso: usuario, artículo, transportista y orden |
+| `vinted.historico` | las ventas ya impresas, la más reciente primero |
 
 Cada entrada lleva un `id` propio, para poder quitar una del medio sin descolocar
 las demás. Si el JSON guardado estuviera corrupto, `carga()` lo descarta y
@@ -102,7 +106,7 @@ npm i        # una vez, instala jsdom
 npm test
 ```
 
-Carga la página en un DOM de mentira y comprueba 31 cosas: que arranca sin
+Carga la página en un DOM de mentira y comprueba 34 cosas: que arranca sin
 errores, que añadir y quitar funciona, que 11 etiquetas dan 2 páginas, que se
 guarda en `localStorage`, y todo el flujo de ventas guardadas.
 

@@ -530,10 +530,14 @@ function imprime(){
   $('#noVaciar').addEventListener('click', cierraParte);
 }
 
+// Guardar la selección NO crea una venta en el histórico: eso solo pasa al
+// imprimir. Aquí solo se fuerza el guardado de la cola, que de todas formas ya
+// se guarda sola en cada alta y cada baja; el botón está para verlo confirmado.
 function guardaSeleccion(){
-  var v=archiva();
-  if(!v) return;
-  parte('Guardada como <b>'+esc(v.nombre)+'</b> con '+cuantas(v.etiquetas.length)+'. La cola se queda como está.', true);
+  if(!etiquetas.length) return;
+  guarda();
+  parte('Selección guardada: '+cuantas(etiquetas.length)+'. Sigue aquí cuando vuelvas a abrir la página, '+
+        'y no pasa al histórico hasta que la imprimas.', true);
 }
 
 /* ============ Vaciar en dos toques ============ */

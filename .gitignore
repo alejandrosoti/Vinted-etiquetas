@@ -5,3 +5,4 @@ Thumbs.db
 .netlify/
 node_modules/
 *.log
+package-lock.json

@@ -16,6 +16,27 @@ Escribes el usuario de Vinted, el artículo (opcional) y eliges transportista.
 Se puede añadir con el teclado sin tocar el ratón: `Enter` en cualquiera de los
 dos campos añade la etiqueta y vuelve el cursor a «Usuario».
 
+## Ventas guardadas
+
+Cada tanda que imprimes queda archivada con su fecha y su hora: **Venta
+23/08/2026 19:52**. Aparece en «Ventas guardadas», plegada; al tocarla se abre y
+se ve quién iba dentro — usuario, artículo y transportista de cada etiqueta.
+
+Se guarda una venta de dos maneras:
+
+- **Imprimir A4** — archiva y saca el papel. Después pregunta si la impresión ha
+  salido bien: **Sí, vaciar la cola** la deja limpia para la tanda siguiente,
+  **No, dejarla** no toca nada, por si hay que repetir.
+- **Guardar selección** — archiva sin imprimir, y la cola se queda como está.
+  Para dejar constancia de una tanda a medias, o antes de vaciar.
+
+**Devolver a la cola** recupera esas etiquetas y las añade **al final** de lo que
+haya ahora, con identificadores nuevos. Sirve para reimprimir una venta o para
+corregir un usuario mal escrito: la devuelves, la arreglas y vuelves a imprimir.
+La venta archivada no se toca: es una copia, no una referencia.
+
+Todavía **no hay forma de borrar una venta del histórico**.
+
 ## No hace falta terminar de una sentada
 
 La cola se guarda sola en el navegador **en cuanto añades o quitas algo**. Puedes
@@ -46,7 +67,8 @@ Una sola clave de `localStorage`, sin servidor ni base de datos:
 
 | Clave | Qué guarda |
 |---|---|
-| `vinted.etiquetas` | la cola entera: usuario, artículo, transportista y orden |
+| `vinted.etiquetas` | la cola actual: usuario, artículo, transportista y orden |
+| `vinted.historico` | las ventas archivadas, la más reciente primero |
 
 Cada entrada lleva un `id` propio, para poder quitar una del medio sin descolocar
 las demás. Si el JSON guardado estuviera corrupto, `carga()` lo descarta y
@@ -70,6 +92,24 @@ Las filas de `.pagina` van en `minmax(0,1fr)`, no en `1fr`. `1fr` es
 de 297mm y derrama una tira en blanco en el papel siguiente. Con ocho por hoja
 no se notaba; con veinte salían tres hojas para veintiuna etiquetas. No lo
 toques aunque parezca que da igual.
+
+## La prueba
+
+`index.html` no depende de nada, pero la prueba sí:
+
+```bash
+npm i        # una vez, instala jsdom
+npm test
+```
+
+Carga la página en un DOM de mentira y comprueba 31 cosas: que arranca sin
+errores, que añadir y quitar funciona, que 11 etiquetas dan 2 páginas, que se
+guarda en `localStorage`, y todo el flujo de ventas guardadas.
+
+Pásala siempre antes de un `push`. Existe porque una vez se subió el archivo con
+medio JavaScript borrado: la sintaxis era válida, `node --check` daba el visto
+bueno, y la página estaba muerta en producción sin que nadie se enterara hasta
+abrirla en el navegador.
 
 ## Publicar solo en cada push
 

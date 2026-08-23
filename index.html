@@ -89,6 +89,21 @@ ul.cola li:first-child{border-top:0}
 .quitar{background:none;border:0;color:var(--tx2);font-size:20px;line-height:1;padding:8px 4px;flex:0 0 auto}
 .quitar:active{color:#E2001A}
 
+/* ---------- Histórico ---------- */
+ul.hist{list-style:none;margin:0;padding:0}
+ul.hist li{border-top:1px solid var(--bor)}
+ul.hist li:first-child{border-top:0}
+.hist .cab{
+  display:flex;align-items:center;gap:10px;width:100%;
+  background:none;border:0;padding:13px 0;text-align:left;
+}
+.hist .flecha{color:var(--tx2);font-size:11px;flex:0 0 auto;transition:transform .15s}
+.hist li.abierta .flecha{transform:rotate(90deg)}
+.hist .nom{flex:1;min-width:0;font-weight:700;font-size:14.5px}
+.hist .cuenta{font-size:12px;color:var(--tx2);flex:0 0 auto}
+.hist .cuerpo{padding:0 0 14px}
+.hist .cuerpo[hidden]{display:none}
+
 /* ---------- Medidor ---------- */
 .medidor{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:0 0 11px}
 .hueco-m{aspect-ratio:95/53;border-radius:5px;border:1px dashed #3f4642;background:#1e2321}
@@ -97,6 +112,12 @@ ul.cola li:first-child{border-top:0}
 .medidor-tx b{color:var(--tx);font-weight:700}
 
 /* ---------- Avisos ---------- */
+.parte{
+  margin:12px 0 0;padding:12px 13px;border-radius:var(--r2);
+  background:#1e2a26;border:1px solid #2f4a41;font-size:13.5px;line-height:1.45;color:#bcd8cd;
+}
+.parte b{color:var(--tx)}
+.parte .fila{margin-top:11px}
 .error{
   margin:11px 0 0;padding:11px 12px;border-radius:var(--r2);
   background:#3a1c1f;border:1px solid #6b2a2f;color:#f3c4c4;font-size:13.5px;line-height:1.45;
@@ -184,7 +205,15 @@ ul.cola li:first-child{border-top:0}
     <div id="colaWrap"></div>
   </section>
 
+  <section class="card">
+    <h2>Ventas guardadas</h2>
+    <div id="histWrap"></div>
+  </section>
+
   <button class="btn pri ancho" id="btnImprimir" type="button">Imprimir A4</button>
+  <div id="parte" hidden></div>
+  <div class="hueco"></div>
+  <button class="btn ancho" id="btnGuardar" type="button">Guardar selección</button>
   <div class="hueco"></div>
   <button class="btn peli ancho" id="btnVaciar" type="button">Vaciar</button>
 </div>
@@ -196,7 +225,7 @@ ul.cola li:first-child{border-top:0}
 'use strict';
 
 /* ============ Constantes ============ */
-var K_ET='vinted.etiquetas';
+var K_ET='vinted.etiquetas', K_HI='vinted.historico';
 var POR_HOJA=10;
 
 var TRANS={
@@ -207,8 +236,26 @@ var TRANS={
 };
 var CLAVES=['inpost','mondial','vintedgo','otro'];
 
+/* ============ Utilidades ============ */
+function $(s,r){ return (r||document).querySelector(s); }
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function dos(n){ return n<10 ? '0'+n : String(n); }
+function id(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function trans(t){ return TRANS[t] || TRANS.otro; }
+function rotulo(e){
+  if(e.transportista==='otro'){
+    var n=(e.otroNombre||'').trim();
+    return n ? n.toUpperCase() : 'OTRO';
+  }
+  return trans(e.transportista).rotulo;
+}
+
 /* ============ Estado ============ */
-var etiquetas=[];
+var etiquetas=[], historico=[];
 
 function carga(){
   try{
@@ -226,10 +273,36 @@ function carga(){
         };
       });
   }catch(err){ etiquetas=[]; }
+
+  try{
+    var crudoH=localStorage.getItem(K_HI);
+    var listaH=crudoH ? JSON.parse(crudoH) : [];
+    if(!Array.isArray(listaH)) listaH=[];
+    historico=listaH.filter(function(v){ return v && typeof v==='object' && Array.isArray(v.etiquetas); })
+      .map(function(v){
+        return {
+          id: v.id || id(),
+          nombre: String(v.nombre || 'Venta sin nombre'),
+          cuando: Number(v.cuando) || 0,
+          etiquetas: v.etiquetas.filter(function(e){ return e && e.usuario; }).map(function(e){
+            return {
+              usuario: String(e.usuario),
+              articulo: e.articulo ? String(e.articulo) : '',
+              transportista: TRANS[e.transportista] ? e.transportista : 'otro',
+              otroNombre: e.otroNombre ? String(e.otroNombre) : ''
+            };
+          })
+        };
+      });
+  }catch(err){ historico=[]; }
 }
 function guarda(){
   try{ localStorage.setItem(K_ET, JSON.stringify(etiquetas)); }
   catch(err){ alerta($('#mError'),'No se ha podido guardar en este navegador.'); }
+}
+function guardaHist(){
+  try{ localStorage.setItem(K_HI, JSON.stringify(historico)); }
+  catch(err){ alerta($('#mError'),'No cabe más en este navegador: borra alguna venta guardada.'); }
 }
 
 /* ============ Selectores de transportista ============ */
@@ -324,6 +397,7 @@ function render(){
   }
 
   $('#btnImprimir').disabled = n===0;
+  $('#btnGuardar').disabled = n===0;
   $('#btnVaciar').disabled = n===0;
   pintaHoja();
 }
@@ -345,6 +419,121 @@ function pintaHoja(){
       '</article>';
     }).join('')+'</div>';
   }).join('');
+}
+
+/* ============ Ventas guardadas ============ */
+function sello(d){
+  return dos(d.getDate())+'/'+dos(d.getMonth()+1)+'/'+d.getFullYear()+
+         ' '+dos(d.getHours())+':'+dos(d.getMinutes());
+}
+// Copia los datos, no las referencias: si luego se edita la cola, la venta
+// guardada tiene que quedarse como estaba el día que se imprimió.
+function archiva(){
+  if(!etiquetas.length) return null;
+  var v={
+    id:id(), nombre:'Venta '+sello(new Date()), cuando:Date.now(),
+    etiquetas: etiquetas.map(function(e){
+      return {usuario:e.usuario, articulo:e.articulo, transportista:e.transportista, otroNombre:e.otroNombre};
+    })
+  };
+  historico.unshift(v);
+  guardaHist(); pintaHistorico();
+  return v;
+}
+function cuantas(n){ return n+(n===1 ? ' etiqueta' : ' etiquetas'); }
+
+function pintaHistorico(){
+  var w=$('#histWrap');
+  if(!historico.length){
+    w.innerHTML='<p class="vacio">Todavía no hay ninguna venta guardada · Se guardan al imprimir, o con el botón «Guardar selección»</p>';
+    return;
+  }
+  w.innerHTML='<ul class="hist">'+historico.map(function(v,i){
+    return '<li data-i="'+i+'">'+
+      '<button class="cab" type="button" aria-expanded="false">'+
+        '<span class="flecha">&#9654;</span>'+
+        '<span class="nom">'+esc(v.nombre)+'</span>'+
+        '<span class="cuenta">'+cuantas(v.etiquetas.length)+'</span>'+
+      '</button>'+
+      '<div class="cuerpo" hidden>'+
+        '<ul class="cola">'+v.etiquetas.map(function(e,j){
+          var t=trans(e.transportista);
+          return '<li>'+
+            '<span class="barra-c" style="--c:'+t.color+'"></span>'+
+            '<span class="n mono">'+dos(j+1)+'</span>'+
+            '<span class="datos">'+
+              '<span class="u">'+esc(e.usuario)+'</span>'+
+              (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
+              '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
+            '</span>'+
+          '</li>';
+        }).join('')+'</ul>'+
+        '<div class="hueco"></div>'+
+        '<button class="btn chico devolver" type="button">Devolver a la cola</button>'+
+      '</div>'+
+    '</li>';
+  }).join('')+'</ul>';
+
+  Array.prototype.forEach.call(w.querySelectorAll('.hist > li'), function(li){
+    var v=historico[+li.getAttribute('data-i')];
+    var cab=$('.cab',li), cuerpo=$('.cuerpo',li);
+    cab.addEventListener('click', function(){
+      var abre=cuerpo.hidden;
+      cuerpo.hidden=!abre;
+      li.classList.toggle('abierta', abre);
+      cab.setAttribute('aria-expanded', abre ? 'true' : 'false');
+    });
+    $('.devolver',li).addEventListener('click', function(){ devuelve(v); });
+  });
+}
+
+// Vuelven con id nuevo: si la venta se devuelve dos veces, no se pisan entre sí
+// ni con las que ya estuvieran en la cola.
+function devuelve(v){
+  v.etiquetas.forEach(function(e){
+    etiquetas.push({
+      id:id(), usuario:e.usuario, articulo:e.articulo||'',
+      transportista:e.transportista, otroNombre:e.otroNombre||''
+    });
+  });
+  guarda(); render();
+  parte('Devueltas <b>'+cuantas(v.etiquetas.length)+'</b> a la cola, al final de lo que ya había.', true);
+}
+
+/* ============ El parte de después de imprimir ============ */
+var relojParte=null;
+function parte(html, seSolo){
+  clearTimeout(relojParte);
+  var c=$('#parte');
+  c.hidden=false;
+  c.innerHTML='<div class="parte">'+html+'</div>';
+  if(seSolo) relojParte=setTimeout(cierraParte, 6000);
+}
+function cierraParte(){
+  clearTimeout(relojParte); relojParte=null;
+  var c=$('#parte'); c.hidden=true; c.innerHTML='';
+}
+
+function imprime(){
+  var v=archiva();
+  window.print();
+  if(!v) return;
+  parte('Guardada como <b>'+esc(v.nombre)+'</b> con '+cuantas(v.etiquetas.length)+'.<br>'+
+        '¿Ha salido bien la impresión?'+
+        '<div class="fila">'+
+          '<button class="btn chico" id="siVaciar" type="button">Sí, vaciar la cola</button> '+
+          '<button class="btn chico" id="noVaciar" type="button">No, dejarla</button>'+
+        '</div>');
+  $('#siVaciar').addEventListener('click', function(){
+    etiquetas=[]; guarda(); render(); cierraParte();
+  });
+  $('#noVaciar').addEventListener('click', cierraParte);
+}
+
+function guardaSeleccion(){
+  var v=archiva();
+  if(!v) return;
+  parte('Guardada como <b>'+esc(v.nombre)+'</b> con '+cuantas(v.etiquetas.length)+'. La cola se queda como está.', true);
 }
 
 /* ============ Vaciar en dos toques ============ */
@@ -370,11 +559,13 @@ function desarma(){
 carga();
 pintaManual();
 render();
+pintaHistorico();
 
 $('#btnAñadir').addEventListener('click', añadeManual);
 $('#mUsuario').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
 $('#mArticulo').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
-$('#btnImprimir').addEventListener('click', function(){ window.print(); });
+$('#btnImprimir').addEventListener('click', imprime);
+$('#btnGuardar').addEventListener('click', guardaSeleccion);
 $('#btnVaciar').addEventListener('click', vaciar);
 })();
 </script>

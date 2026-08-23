@@ -32,8 +32,24 @@ Escribes el usuario de Vinted, el artículo (opcional), eliges transportista y,
 si quieres, le enganchas una captura. **Añadir a la hoja** y se suma a la cola.
 Cuando tengas las que quieras, **Imprimir A4**.
 
+Los transportistas son cuatro: **InPost**, **Mondial Relay**, **Vinted Go** y
+**Correos**, cada uno con su color. Las etiquetas que guardaste cuando existía
+la opción «Otro» siguen ahí tal cual, con el nombre que les escribieras.
+
 Se puede añadir con el teclado sin tocar el ratón: `Enter` en cualquiera de los
 dos campos añade la etiqueta y vuelve el cursor a «Usuario».
+
+### Ver solo un transportista
+
+Encima de la cola hay unas pestañas: **Todos** y una por cada transportista que
+haya ahora mismo en la lista, con su cuenta. Sirven para preparar la entrega de
+un punto de recogida sin leer las demás.
+
+Es solo una forma de mirar la lista. El número que lleva cada etiqueta sigue
+siendo el sitio que ocupa **en la hoja**, no el de la lista filtrada, para que
+valga para encontrarla en el papel. El medidor, el orden y lo que se imprime son
+siempre la cola entera. Con un solo transportista en la cola las pestañas no
+aparecen, porque no habría nada que filtrar.
 
 ## Las capturas
 
@@ -91,7 +107,10 @@ haya ahora, con identificadores nuevos. Sirve para reimprimir una venta o para
 corregir un usuario mal escrito: la devuelves, la arreglas y vuelves a imprimir.
 La venta archivada no se toca: es una copia, no una referencia.
 
-Todavía **no hay forma de borrar una venta del histórico**.
+**Eliminar venta** la borra del histórico, en dos toques: el primero pregunta y
+el segundo borra. No hay vuelta atrás — se van también sus capturas, que el
+servidor barre en cuanto ve que ya no las menciona nadie. Si querías quedarte
+con las etiquetas, devuélvelas a la cola antes de eliminar la venta.
 
 ## No hace falta terminar de una sentada
 

@@ -111,6 +111,11 @@ function montaApp(datosIniciales, opciones = {}) {
   $('#mArticulo').value = 'Chaqueta H&M';
   $('#btnAñadir').click();
   comprueba('añade una etiqueta a la cola', d.querySelectorAll('#colaWrap ul.cola li').length === 1);
+  comprueba('el selector ofrece Correos',
+            [...d.querySelectorAll('#mTrans button')].some(b => b.getAttribute('data-t') === 'correos'));
+  comprueba('y ya no ofrece "Otro"',
+            ![...d.querySelectorAll('#mTrans button')].some(b => b.getAttribute('data-t') === 'otro'));
+  comprueba('con un solo transportista no hay pestañas que tocar', $('#filtro').hidden === true);
   comprueba('el medidor pinta 10 huecos', d.querySelectorAll('.hueco-m').length === 10);
   comprueba('un hueco relleno', d.querySelectorAll('.hueco-m.lleno').length === 1);
   comprueba('la hoja tiene 1 página', d.querySelectorAll('.pagina').length === 1);
@@ -341,6 +346,74 @@ function montaApp(datosIniciales, opciones = {}) {
             sinRed.d.querySelector('#estado').textContent);
   comprueba('enseñando lo último que se vio aquí',
             [...sinRed.d.querySelectorAll('#colaWrap ul.cola .u')].map(e => e.textContent).includes('copia-vieja'));
+
+  // ================= el filtro de la cola =================
+  const filtra = montaApp({ etiquetas: [
+    { id: 'f1', usuario: 'uno',    transportista: 'inpost' },
+    { id: 'f2', usuario: 'dos',    transportista: 'mondial' },
+    { id: 'f3', usuario: 'tres',   transportista: 'inpost' },
+    { id: 'f4', usuario: 'cuatro', transportista: 'correos' }
+  ], historico: [] }, { codigoGuardado: 'abrete-sesamo' });
+  await espera(60);
+  const fd = filtra.d, f$ = s => fd.querySelector(s);
+  comprueba('con varios transportistas salen las pestañas', f$('#filtro').hidden === false);
+  comprueba('una por transportista de la cola, más "Todos"',
+            fd.querySelectorAll('#filtro button').length === 4, fd.querySelectorAll('#filtro button').length);
+  comprueba('no cuela pestañas de los que no hay',
+            !f$('#filtro button[data-f="vintedgo"]'));
+  comprueba('empieza en "Todos"', f$('#filtro button[data-f="todos"]').getAttribute('aria-pressed') === 'true');
+  comprueba('y se ven las cuatro', fd.querySelectorAll('#colaWrap ul.cola > li').length === 4);
+
+  f$('#filtro button[data-f="inpost"]').click();
+  comprueba('al elegir InPost quedan solo las suyas',
+            fd.querySelectorAll('#colaWrap ul.cola > li').length === 2, fd.querySelectorAll('#colaWrap ul.cola > li').length);
+  comprueba('con el número que tienen en la hoja, no renumeradas',
+            [...fd.querySelectorAll('#colaWrap .n')].map(e => e.textContent).join(',') === '01,03',
+            [...fd.querySelectorAll('#colaWrap .n')].map(e => e.textContent).join(','));
+  comprueba('el medidor sigue contando la cola entera', fd.querySelectorAll('.hueco-m.lleno').length === 4);
+  comprueba('y la hoja se imprime entera', fd.querySelectorAll('.pagina .et').length === 4);
+
+  f$('#filtro button[data-f="todos"]').click();
+  comprueba('"Todos" las trae de vuelta', fd.querySelectorAll('#colaWrap ul.cola > li').length === 4);
+
+  f$('#filtro button[data-f="correos"]').click();
+  comprueba('el filtro de Correos deja una', fd.querySelectorAll('#colaWrap ul.cola > li').length === 1);
+  fd.querySelector('#colaWrap ul.cola > li .quitar').click();
+  comprueba('si se acaba el transportista filtrado, vuelve a todos y no se queda en blanco',
+            fd.querySelectorAll('#colaWrap ul.cola > li').length === 3,
+            fd.querySelectorAll('#colaWrap ul.cola > li').length);
+
+  // ================= lo guardado con «Otro» no se rompe =================
+  const legado = montaApp({ etiquetas: [
+    { id: 'v1', usuario: 'de-antes', transportista: 'otro', otroNombre: 'Seur' }
+  ], historico: [] }, { codigoGuardado: 'abrete-sesamo' });
+  await espera(60);
+  comprueba('las etiquetas viejas de "Otro" conservan su nombre',
+            /SEUR/.test(legado.d.querySelector('#colaWrap .t').textContent),
+            legado.d.querySelector('#colaWrap .t').textContent);
+
+  // ================= eliminar una venta guardada =================
+  const borra = montaApp({ etiquetas: [], historico: [
+    { id: 'v1', nombre: 'Venta 01/01/2026 10:00', cuando: 1,
+      etiquetas: [{ id: 'a', usuario: 'uno', transportista: 'inpost' }] },
+    { id: 'v2', nombre: 'Venta 02/01/2026 10:00', cuando: 2,
+      etiquetas: [{ id: 'b', usuario: 'dos', transportista: 'inpost' }] }
+  ] }, { codigoGuardado: 'abrete-sesamo' });
+  await espera(60);
+  const bd = borra.d;
+  comprueba('parte de dos ventas guardadas', bd.querySelectorAll('ul.hist > li').length === 2);
+  bd.querySelector('ul.hist .cab').click();
+  const boton = bd.querySelector('ul.hist .borrar');
+  boton.click();
+  comprueba('un toque no borra, pregunta',
+            bd.querySelectorAll('ul.hist > li').length === 2 && /Seguro/.test(boton.textContent), boton.textContent);
+  boton.click();
+  comprueba('el segundo toque la elimina', bd.querySelectorAll('ul.hist > li').length === 1);
+  comprueba('y respeta la otra', /02\/01\/2026/.test(bd.querySelector('ul.hist .nom').textContent),
+            bd.querySelector('ul.hist .nom').textContent);
+  await espera(700);
+  comprueba('el servidor se entera', borra.servidor.datos.historico.length === 1, borra.servidor.datos.historico.length);
+  comprueba('y la cola no se toca', borra.servidor.datos.etiquetas.length === 0);
 
   console.log('');
   console.log(fallos === 0 ? `TODO EN VERDE — ${ok} comprobaciones` : `${fallos} FALLOS de ${ok + fallos}`);

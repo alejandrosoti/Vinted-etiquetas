@@ -19,7 +19,7 @@
   --inpost:#FFC400; --inpost-tx:#16191C;
   --mondial:#E2001A; --mondial-tx:#FFFFFF;
   --vintedgo:#007782; --vintedgo-tx:#FFFFFF;
-  --otro:#4A524C; --otro-tx:#FFFFFF;
+  --correos:#003DA5; --correos-tx:#FFFFFF;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -70,6 +70,23 @@ input,select{font:inherit}
 .btn.peli.armado{background:#E2001A;border-color:#E2001A;color:#fff}
 .btn[disabled]{opacity:.42;pointer-events:none}
 .btn.chico{padding:9px 12px;font-size:13px}
+
+/* ---------- Filtro de la cola ---------- */
+.filtro{
+  display:flex;gap:7px;overflow-x:auto;margin:0 0 12px;padding-bottom:3px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.filtro::-webkit-scrollbar{display:none}
+.filtro[hidden]{display:none}
+.filtro button{
+  background:var(--bg);border:1px solid var(--bor);border-radius:999px;
+  padding:8px 13px;font-size:13px;font-weight:700;color:var(--tx2);
+  white-space:nowrap;flex:0 0 auto;display:flex;align-items:center;gap:7px;
+}
+.filtro button .punto{width:9px;height:9px;border-radius:50%;background:var(--c);flex:0 0 auto}
+.filtro button .cuenta{font-weight:800;opacity:.65}
+.filtro button[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:var(--t);font-weight:800}
+.filtro button[aria-pressed="true"] .punto{background:var(--t);opacity:.75}
 
 /* ---------- Cola ---------- */
 .vacio{color:var(--tx2);font-size:14px;text-align:center;padding:22px 10px;line-height:1.5}
@@ -244,10 +261,6 @@ ul.hist li:first-child{border-top:0}
     <div class="hueco"></div>
     <label class="lab">Transportista</label>
     <div class="trans" id="mTrans"></div>
-    <div id="mOtroWrap" hidden>
-      <div class="hueco"></div>
-      <input class="campo" id="mOtro" type="text" placeholder="Nombre del transportista">
-    </div>
     <div class="hueco"></div>
     <label class="lab">Captura <span style="font-weight:500">· opcional</span></label>
     <button class="captura" id="btnCaptura" type="button">Elegir una captura</button>
@@ -270,6 +283,7 @@ ul.hist li:first-child{border-top:0}
 
   <section class="card">
     <h2>En la cola</h2>
+    <div class="filtro" id="filtro" hidden></div>
     <div id="colaWrap"></div>
   </section>
 
@@ -322,9 +336,14 @@ var TRANS={
   inpost:  {nombre:'InPost',        rotulo:'INPOST',        color:'#FFC400', texto:'#16191C'},
   mondial: {nombre:'Mondial Relay', rotulo:'MONDIAL RELAY', color:'#E2001A', texto:'#FFFFFF'},
   vintedgo:{nombre:'Vinted Go',     rotulo:'VINTED GO',     color:'#007782', texto:'#FFFFFF'},
+  correos: {nombre:'Correos',       rotulo:'CORREOS',       color:'#003DA5', texto:'#FFFFFF'},
+  /* «Otro» ya no se puede elegir, pero no se puede borrar: las etiquetas
+     guardadas antes del cambio lo llevan dentro, y tienen que seguir
+     pintándose, filtrándose y enseñando el nombre que se les escribió.
+     Es además el transportista al que cae cualquier valor desconocido. */
   otro:    {nombre:'Otro',          rotulo:'OTRO',          color:'#4A524C', texto:'#FFFFFF'}
 };
-var CLAVES=['inpost','mondial','vintedgo','otro'];
+var CLAVES=['inpost','mondial','vintedgo','correos'];
 
 /* ============ Utilidades ============ */
 function $(s,r){ return (r||document).querySelector(s); }
@@ -410,7 +429,6 @@ function pintaTrans(caja, sel, alElegir){
 var mSel='inpost';
 function pintaManual(){
   pintaTrans($('#mTrans'), mSel, function(t){ mSel=t; pintaManual(); });
-  $('#mOtroWrap').hidden = mSel!=='otro';
 }
 function alerta(el, texto){
   if(!texto){ el.hidden=true; el.textContent=''; return; }
@@ -428,7 +446,7 @@ function añadeManual(){
   alerta($('#mError'),'');
   etiquetas.push({
     id:id(), usuario:u, articulo:$('#mArticulo').value.trim(),
-    transportista:mSel, otroNombre: mSel==='otro' ? $('#mOtro').value.trim() : '',
+    transportista:mSel, otroNombre:'',
     foto: fotoPendiente ? fotoPendiente.clave : '',
     mini: fotoPendiente ? fotoPendiente.mini : ''
   });
@@ -436,6 +454,43 @@ function añadeManual(){
   guarda(); render();
   $('#mUsuario').value=''; $('#mArticulo').value='';
   $('#mUsuario').focus();
+}
+
+/* ============ Filtro por transportista ============ */
+var filtro='todos';
+function claveDe(e){ return TRANS[e.transportista] ? e.transportista : 'otro'; }
+
+/* Las pestañas salen de lo que hay en la cola, no de la lista entera: ofrecer
+   «Mondial Relay» cuando no hay ninguna es una pestaña que no lleva a nada.
+   Con un solo transportista no hay nada que filtrar y la barra se quita.
+   El filtro es solo una forma de mirar: no toca el medidor, ni el orden, ni lo
+   que se imprime, que siguen siendo la cola entera. */
+function pintaFiltro(){
+  var caja=$('#filtro');
+  var cuenta={};
+  etiquetas.forEach(function(e){ var k=claveDe(e); cuenta[k]=(cuenta[k]||0)+1; });
+  var presentes=CLAVES.concat('otro').filter(function(k){ return cuenta[k]; });
+
+  // Si desaparece el transportista que se estaba mirando, se vuelve a todos:
+  // si no, la lista se quedaría vacía sin que se entienda por qué.
+  if(filtro!=='todos' && !cuenta[filtro]) filtro='todos';
+  if(presentes.length<2){ filtro='todos'; caja.hidden=true; caja.innerHTML=''; return; }
+
+  caja.hidden=false;
+  caja.innerHTML=
+    '<button type="button" data-f="todos" aria-pressed="'+(filtro==='todos')+'" style="--c:var(--acc);--t:#fff">'+
+      'Todos <span class="cuenta">'+etiquetas.length+'</span></button>'+
+    presentes.map(function(k){
+      var t=TRANS[k];
+      return '<button type="button" data-f="'+k+'" aria-pressed="'+(filtro===k)+'" '+
+             'style="--c:'+t.color+';--t:'+t.texto+'">'+
+             '<span class="punto"></span>'+esc(t.nombre)+
+             ' <span class="cuenta">'+cuenta[k]+'</span></button>';
+    }).join('');
+
+  Array.prototype.forEach.call(caja.querySelectorAll('button'), function(b){
+    b.addEventListener('click', function(){ filtro=b.getAttribute('data-f'); render(); });
+  });
 }
 
 /* ============ Medidor y cola ============ */
@@ -462,15 +517,22 @@ function render(){
     ? 'Aún no hay etiquetas'
     : (n===1 ? '1 etiqueta · 1 hoja' : n+' etiquetas · '+Math.ceil(n/POR_HOJA)+(Math.ceil(n/POR_HOJA)===1?' hoja':' hojas'));
 
+  pintaFiltro();
+
   var wrap=$('#colaWrap');
   if(n===0){
     wrap.innerHTML='<p class="vacio">Aún no hay etiquetas · Añade la primera venta y se quedará guardada aquí</p>';
   }else{
-    wrap.innerHTML='<ul class="cola">'+etiquetas.map(function(e,i){
-      var t=trans(e.transportista);
+    // El número que se ve es el sitio que ocupa en la hoja, no el de la lista
+    // filtrada: si al ver solo InPost la 7 pasara a ser la 1, el número dejaría
+    // de servir para encontrarla en el papel, que es para lo único que está.
+    var visibles=etiquetas.map(function(e,i){ return {e:e, num:i+1}; })
+      .filter(function(x){ return filtro==='todos' || claveDe(x.e)===filtro; });
+    wrap.innerHTML='<ul class="cola">'+visibles.map(function(x){
+      var e=x.e, t=trans(e.transportista);
       return '<li>'+
         '<span class="barra-c" style="--c:'+t.color+'"></span>'+
-        '<span class="n mono">'+dos(i+1)+'</span>'+
+        '<span class="n mono">'+dos(x.num)+'</span>'+
         '<span class="datos">'+
           '<span class="u">'+esc(e.usuario)+'</span>'+
           (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
@@ -847,7 +909,10 @@ function pintaHistorico(){
           '</li>';
         }).join('')+'</ul>'+
         '<div class="hueco"></div>'+
-        '<button class="btn chico devolver" type="button">Devolver a la cola</button>'+
+        '<span class="fila">'+
+          '<button class="btn chico devolver" type="button">Devolver a la cola</button>'+
+          '<button class="btn chico peli borrar" type="button">Eliminar venta</button>'+
+        '</span>'+
       '</div>'+
     '</li>';
   }).join('')+'</ul>';
@@ -862,6 +927,7 @@ function pintaHistorico(){
       cab.setAttribute('aria-expanded', abre ? 'true' : 'false');
     });
     $('.devolver',li).addEventListener('click', function(){ devuelve(v); });
+    armaBorrado($('.borrar',li), v);
     var iv=+li.getAttribute('data-i');
     Array.prototype.forEach.call(li.querySelectorAll('.mini-et'), function(b){
       b.addEventListener('click', function(){
@@ -871,6 +937,29 @@ function pintaHistorico(){
         if(v.etiquetas[ie]) abreFoto(v.etiquetas[ie], refVenta(iv, ie));
       });
     });
+  });
+}
+
+/* En dos toques, como el botón de vaciar. Una venta borrada no vuelve: se lleva
+   por delante sus capturas, que el servidor barre en cuanto ve que ya no las
+   menciona nadie. Si quieres quedarte con las etiquetas, devuélvelas antes. */
+function armaBorrado(boton, v){
+  var reloj=null;
+  function desarma(){
+    clearTimeout(reloj); reloj=null;
+    boton.classList.remove('armado'); boton.textContent='Eliminar venta';
+  }
+  boton.addEventListener('click', function(){
+    if(!reloj){
+      boton.classList.add('armado');
+      boton.textContent='¿Seguro? Toca otra vez';
+      reloj=setTimeout(desarma, 4000);
+      return;
+    }
+    desarma();
+    historico=historico.filter(function(x){ return x!==v; });
+    guardaHist(); pintaHistorico();
+    parte('Venta <b>'+esc(v.nombre)+'</b> eliminada, con sus '+cuantas(v.etiquetas.length)+'.', true);
   });
 }
 

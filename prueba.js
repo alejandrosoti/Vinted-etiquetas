@@ -107,10 +107,23 @@ function montaApp(datosIniciales, opciones = {}) {
   comprueba('manda el código en la cabecera', servidor.llamadas.every(l => 'codigo' in l));
 
   // ================= añadir =================
+  const elige = t => d.querySelector('#mTrans button[data-t="' + t + '"]').click();
+
   $('#mUsuario').value = 'alejandroe910';
   $('#mArticulo').value = 'Chaqueta H&M';
+  comprueba('ningún transportista viene elegido de fábrica',
+            [...d.querySelectorAll('#mTrans button')].every(b => b.getAttribute('aria-pressed') === 'false'));
+  $('#btnAñadir').click();
+  comprueba('sin transportista no añade', d.querySelectorAll('#colaWrap ul.cola li').length === 0);
+  comprueba('y dice qué falta', /Falta elegir el transportista/.test($('#mError').textContent), $('#mError').textContent);
+  comprueba('sin perder lo escrito', $('#mUsuario').value === 'alejandroe910');
+
+  elige('inpost');
+  comprueba('al elegir uno se quita el aviso', $('#mError').hidden === true);
   $('#btnAñadir').click();
   comprueba('añade una etiqueta a la cola', d.querySelectorAll('#colaWrap ul.cola li').length === 1);
+  comprueba('el transportista elegido se queda puesto para la siguiente',
+            d.querySelector('#mTrans button[data-t="inpost"]').getAttribute('aria-pressed') === 'true');
   comprueba('el selector ofrece Correos',
             [...d.querySelectorAll('#mTrans button')].some(b => b.getAttribute('data-t') === 'correos'));
   comprueba('y ya no ofrece "Otro"',
@@ -123,6 +136,7 @@ function montaApp(datosIniciales, opciones = {}) {
   await espera(700);
   comprueba('sube la etiqueta al servidor', servidor.datos.etiquetas.length === 1, JSON.stringify(servidor.datos.etiquetas.length));
   comprueba('con el usuario correcto', servidor.datos.etiquetas[0].usuario === 'alejandroe910');
+  comprueba('y con su transportista', servidor.datos.etiquetas[0].transportista === 'inpost');
 
   for (let i = 2; i <= 11; i++) { $('#mUsuario').value = 'usuario' + i; $('#btnAñadir').click(); }
   comprueba('11 etiquetas -> 2 páginas', d.querySelectorAll('.pagina').length === 2, d.querySelectorAll('.pagina').length);

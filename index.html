@@ -57,6 +57,7 @@ input,select{font:inherit}
 .trans button .punto{width:13px;height:13px;border-radius:50%;background:var(--c);flex:0 0 auto;border:1px solid rgba(255,255,255,.18)}
 .trans button[aria-pressed="true"]{background:var(--c);color:var(--t);border-color:var(--c);font-weight:800}
 .trans button[aria-pressed="true"] .punto{background:var(--t);opacity:.75;border-color:transparent}
+.trans.mal button{border-color:#6b2a2f}
 
 /* ---------- Botones ---------- */
 .btn{
@@ -426,9 +427,18 @@ function pintaTrans(caja, sel, alElegir){
 }
 
 /* ============ Añadir a mano ============ */
-var mSel='inpost';
+/* Vacío a propósito: con uno puesto de fábrica, el día que se te olvide mirar
+   sale una etiqueta de InPost sin que nadie lo haya decidido, y eso no se ve
+   hasta que el paquete está en el punto equivocado. Mejor que no deje pasar.
+   Una vez elegido se queda elegido: lo normal es meter varias del mismo sitio. */
+var mSel='';
 function pintaManual(){
-  pintaTrans($('#mTrans'), mSel, function(t){ mSel=t; pintaManual(); });
+  pintaTrans($('#mTrans'), mSel, function(t){
+    mSel=t;
+    $('#mTrans').classList.remove('mal');
+    alerta($('#mError'),'');
+    pintaManual();
+  });
 }
 function alerta(el, texto){
   if(!texto){ el.hidden=true; el.textContent=''; return; }
@@ -443,6 +453,11 @@ function añadeManual(){
     return;
   }
   $('#mUsuario').classList.remove('mal');
+  if(!mSel){
+    $('#mTrans').classList.add('mal');
+    alerta($('#mError'),'Falta elegir el transportista.');
+    return;
+  }
   alerta($('#mError'),'');
   etiquetas.push({
     id:id(), usuario:u, articulo:$('#mArticulo').value.trim(),

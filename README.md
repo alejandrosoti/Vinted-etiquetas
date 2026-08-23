@@ -33,7 +33,11 @@ si quieres, le enganchas una captura. **Añadir a la hoja** y se suma a la cola.
 Cuando tengas las que quieras, **Imprimir A4**.
 
 Los transportistas son cuatro: **InPost**, **Mondial Relay**, **Vinted Go** y
-**Correos**, cada uno con su color. Las etiquetas que guardaste cuando existía
+**Correos**, cada uno con su color. Ninguno viene elegido de fábrica: hay que
+tocarlo, y hasta entonces no deja añadir. Con uno puesto por defecto, el día que
+se te olvide mirar sale una etiqueta del transportista equivocado y no te enteras
+hasta que el paquete está en el punto que no era. Una vez elegido se queda
+puesto para las siguientes, que lo normal es meter varias del mismo sitio. Las etiquetas que guardaste cuando existía
 la opción «Otro» siguen ahí tal cual, con el nombre que les escribieras.
 
 Se puede añadir con el teclado sin tocar el ratón: `Enter` en cualquiera de los

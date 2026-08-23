@@ -272,7 +272,7 @@ ul.hist li:first-child{border-top:0}
       <button class="btn chico" id="previaQuitar" type="button">Quitar</button>
     </div>
     <div class="hueco"></div>
-    <button class="btn pri ancho" id="btnAñadir" type="button">Añadir a la hoja</button>
+    <button class="btn pri ancho" id="btnAñadir" type="button" disabled>Añadir a la hoja</button>
     <p class="error" id="mError" hidden></p>
   </section>
 
@@ -439,6 +439,15 @@ function pintaManual(){
     alerta($('#mError'),'');
     pintaManual();
   });
+  refrescaAñadir();
+}
+
+/* El botón está apagado hasta que hay usuario y transportista, que es lo único
+   imprescindible: el artículo es opcional y la captura se engancha después.
+   Sigue habiendo comprobación dentro de añadeManual porque con Enter se llega
+   igual, y ahí sí hace falta decir en voz alta qué falta. */
+function refrescaAñadir(){
+  $('#btnAñadir').disabled = !($('#mUsuario').value.trim() && mSel);
 }
 function alerta(el, texto){
   if(!texto){ el.hidden=true; el.textContent=''; return; }
@@ -468,6 +477,7 @@ function añadeManual(){
   fotoPendiente=null; pintaPrevia(); $('#ficheroFoto').value='';
   guarda(); render();
   $('#mUsuario').value=''; $('#mArticulo').value='';
+  refrescaAñadir();
   $('#mUsuario').focus();
 }
 
@@ -1058,6 +1068,7 @@ render();
 pintaHistorico();
 
 $('#btnAñadir').addEventListener('click', añadeManual);
+$('#mUsuario').addEventListener('input', refrescaAñadir);
 $('#mUsuario').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
 $('#mArticulo').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
 $('#btnImprimir').addEventListener('click', imprime);

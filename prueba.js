@@ -108,22 +108,42 @@ function montaApp(datosIniciales, opciones = {}) {
 
   // ================= añadir =================
   const elige = t => d.querySelector('#mTrans button[data-t="' + t + '"]').click();
+  // El botón mira lo escrito, y lo que se escribe a mano no avisa a nadie.
+  const escribe = (sel, v) => {
+    const c = d.querySelector(sel);
+    c.value = v;
+    c.dispatchEvent(new w.Event('input'));
+  };
 
-  $('#mUsuario').value = 'alejandroe910';
-  $('#mArticulo').value = 'Chaqueta H&M';
   comprueba('ningún transportista viene elegido de fábrica',
             [...d.querySelectorAll('#mTrans button')].every(b => b.getAttribute('aria-pressed') === 'false'));
-  $('#btnAñadir').click();
-  comprueba('sin transportista no añade', d.querySelectorAll('#colaWrap ul.cola li').length === 0);
-  comprueba('y dice qué falta', /Falta elegir el transportista/.test($('#mError').textContent), $('#mError').textContent);
-  comprueba('sin perder lo escrito', $('#mUsuario').value === 'alejandroe910');
+  comprueba('con la página en blanco no se puede añadir', $('#btnAñadir').disabled === true);
 
   elige('inpost');
-  comprueba('al elegir uno se quita el aviso', $('#mError').hidden === true);
+  comprueba('con transportista pero sin usuario, sigue apagado', $('#btnAñadir').disabled === true);
+
+  escribe('#mUsuario', 'alejandroe910');
+  comprueba('con usuario y transportista se enciende', $('#btnAñadir').disabled === false);
+  escribe('#mArticulo', 'Chaqueta H&M');
+  comprueba('el artículo no hace falta para encender', $('#btnAñadir').disabled === false);
+
+  // Enter se salta el botón, así que ahí sí hay que decir qué falta.
+  const conEnter = montaApp(null, { codigoGuardado: 'abrete-sesamo' });
+  await espera(60);
+  conEnter.d.querySelector('#mUsuario').value = 'quien-sea';
+  conEnter.d.querySelector('#mUsuario')
+    .dispatchEvent(new conEnter.w.KeyboardEvent('keydown', { key: 'Enter' }));
+  comprueba('con Enter y sin transportista no añade',
+            conEnter.d.querySelectorAll('#colaWrap ul.cola li').length === 0);
+  comprueba('y dice qué falta',
+            /Falta elegir el transportista/.test(conEnter.d.querySelector('#mError').textContent),
+            conEnter.d.querySelector('#mError').textContent);
+  comprueba('sin perder lo escrito', conEnter.d.querySelector('#mUsuario').value === 'quien-sea');
   $('#btnAñadir').click();
   comprueba('añade una etiqueta a la cola', d.querySelectorAll('#colaWrap ul.cola li').length === 1);
   comprueba('el transportista elegido se queda puesto para la siguiente',
             d.querySelector('#mTrans button[data-t="inpost"]').getAttribute('aria-pressed') === 'true');
+  comprueba('pero el botón se apaga solo al vaciarse el usuario', $('#btnAñadir').disabled === true);
   comprueba('el selector ofrece Correos',
             [...d.querySelectorAll('#mTrans button')].some(b => b.getAttribute('data-t') === 'correos'));
   comprueba('y ya no ofrece "Otro"',
@@ -138,7 +158,7 @@ function montaApp(datosIniciales, opciones = {}) {
   comprueba('con el usuario correcto', servidor.datos.etiquetas[0].usuario === 'alejandroe910');
   comprueba('y con su transportista', servidor.datos.etiquetas[0].transportista === 'inpost');
 
-  for (let i = 2; i <= 11; i++) { $('#mUsuario').value = 'usuario' + i; $('#btnAñadir').click(); }
+  for (let i = 2; i <= 11; i++) { escribe('#mUsuario', 'usuario' + i); $('#btnAñadir').click(); }
   comprueba('11 etiquetas -> 2 páginas', d.querySelectorAll('.pagina').length === 2, d.querySelectorAll('.pagina').length);
   comprueba('el subtítulo dice 2 hojas', /11 etiquetas · 2 hojas/.test($('#sub').textContent), $('#sub').textContent);
 
@@ -165,7 +185,7 @@ function montaApp(datosIniciales, opciones = {}) {
   comprueba('y se enseña la previa', $('#previa').hidden === false);
   comprueba('diciendo lo que pesa ya encogida', /KB/.test($('#previaTx').textContent), $('#previaTx').textContent);
 
-  $('#mUsuario').value = 'con-captura';
+  escribe('#mUsuario', 'con-captura');
   $('#btnAñadir').click();
   await espera(700);
   const conFoto = servidor.datos.etiquetas.filter(e => e.usuario === 'con-captura')[0];
@@ -208,7 +228,7 @@ function montaApp(datosIniciales, opciones = {}) {
   // una captura que sigue viva porque la referencia una venta
   eligeUna({ d, w });
   await espera(40);
-  $('#mUsuario').value = 'va-al-historico';
+  escribe('#mUsuario', 'va-al-historico');
   $('#btnAñadir').click();
   await espera(700);
   const laClave = servidor.datos.etiquetas.filter(e => e.usuario === 'va-al-historico')[0].foto;

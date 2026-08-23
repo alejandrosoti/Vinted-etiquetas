@@ -40,8 +40,13 @@ hasta que el paquete está en el punto que no era. Una vez elegido se queda
 puesto para las siguientes, que lo normal es meter varias del mismo sitio. Las etiquetas que guardaste cuando existía
 la opción «Otro» siguen ahí tal cual, con el nombre que les escribieras.
 
+**Añadir a la hoja** está apagado hasta que haya usuario y transportista, que es
+lo único imprescindible: el artículo es opcional y la captura se engancha cuando
+la tengas. Al añadir se apaga solo otra vez, porque el usuario se vacía.
+
 Se puede añadir con el teclado sin tocar el ratón: `Enter` en cualquiera de los
-dos campos añade la etiqueta y vuelve el cursor a «Usuario».
+dos campos añade la etiqueta y vuelve el cursor a «Usuario». Con `Enter` sí se
+llega al botón apagado, y entonces la página dice en voz alta qué falta.
 
 ### Ver solo un transportista
 

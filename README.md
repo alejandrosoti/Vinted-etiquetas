@@ -3,9 +3,28 @@
 Etiquetas para los paquetes vendidos en Vinted: se apuntan las ventas, se
 imprimen diez por hoja A4 y se cortan. Pensado para el móvil.
 
-`index.html` es la aplicación entera: HTML, CSS y JS en el mismo archivo. No hay
-build, ni npm, ni framework, ni API de pago, ni cuenta de nada. Lo único que se
-pide fuera son las tipografías de Google Fonts.
+`index.html` es la interfaz entera: HTML, CSS y JS en el mismo archivo, sin
+build ni framework. Lo único que hay detrás es una Netlify Function de 60 líneas
+que guarda los datos en Netlify Blobs. Ni base de datos, ni servicio contratado
+aparte: las dos cosas vienen incluidas en el plan gratuito de Netlify.
+
+## Puesta en marcha (importante)
+
+La función no deja pasar a nadie hasta que el sitio tenga un código. En Netlify:
+
+**Site configuration → Environment variables → Add a variable**
+
+| Clave | Valor |
+|---|---|
+| `CODIGO_ACCESO` | una clave larga que te inventes |
+
+Que sea larga y que no se parezca a nada: es lo único que separa tus ventas del
+resto de internet, porque este repositorio es público y la dirección de la
+función se ve en el código de la página. Sin esa variable la función responde
+503 a todo el mundo, incluido tú — es a propósito: mejor quedarse fuera que
+abrir la puerta por un despiste de configuración.
+
+Después, la página te pide el código una vez y lo recuerda en ese navegador.
 
 ## Cómo se usa
 
@@ -41,20 +60,20 @@ Todavía **no hay forma de borrar una venta del histórico**.
 
 ## No hace falta terminar de una sentada
 
-La cola se guarda sola en el navegador **en cuanto añades o quitas algo**. Puedes
-cerrar la pestaña, apagar el móvil o volver dos días después: al abrir la página
-sigue todo ahí, en el mismo orden, y sigues añadiendo donde lo dejaste.
+Todo se guarda en el servidor **en cuanto añades o quitas algo**, sin botón que
+se te pueda olvidar. Cierras la pestaña, cambias de móvil, entras de incógnito:
+escribes el código y está todo ahí, en el mismo orden.
 
-Un par de detalles que conviene saber:
-
-- Se guarda **por navegador y por dispositivo**. Lo que añadas en el móvil no
-  aparece en el ordenador; no hay servidor que lo sincronice.
-- **Imprimir no vacía la cola.** Si ya has impreso y no quieres volver a sacar
-  las mismas, dale a **Vaciar** (pide confirmación: hay que tocarlo dos veces).
-- **En incógnito no sobrevive.** Una ventana privada tira todo lo que guarda el
-  sitio en cuanto la cierras; es lo que significa ser privada, y ninguna página
-  puede evitarlo desde dentro. Para trabajar en varias sesiones, ventana normal.
-- Se pierde también si borras los datos del sitio en el navegador.
+- **El servidor manda.** Al abrir se baja lo que haya guardado y eso es lo que
+  ves. El navegador conserva una copia, pero solo para enseñarte algo mientras
+  baja y para que puedas seguir trabajando si te quedas sin cobertura — en ese
+  caso te avisa abajo de que no está guardando.
+- **La primera vez no se pierde nada.** Si el servidor está vacío y este
+  navegador traía etiquetas de antes, se suben en vez de borrarse.
+- **Imprimir no vacía la cola**: te pregunta. Y **Vaciar** pide confirmación,
+  hay que tocarlo dos veces.
+- **Olvidar código** solo deja de recordarlo en ese navegador. No borra nada del
+  servidor.
 
 ## Probar en local
 
@@ -67,16 +86,31 @@ llamada de red que dependa del origen— pero el servidor va igual de bien.
 
 ## Dónde se guarda
 
-Una sola clave de `localStorage`, sin servidor ni base de datos:
+En **Netlify Blobs**, bajo una única clave del almacén `vinted`, con la forma
+`{ etiquetas: [...], historico: [...] }`. Se lee y se escribe con consistencia
+fuerte: por defecto un cambio tarda hasta un minuto en verse en todas partes, y
+aquí se escribe y se relee en segundos desde el mismo móvil.
 
-| Clave | Qué guarda |
+La función está en `netlify/functions/datos.mjs` y responde en `/api/datos`:
+`GET` devuelve todo, `PUT` lo reemplaza. Las dos exigen la cabecera `x-codigo`,
+que se compara en tiempo constante para no delatar por el retardo cuántos
+caracteres se han acertado.
+
+El navegador guarda además una copia de solo lectura, que es lo que ves mientras
+carga o si te quedas sin red:
+
+| Clave de `localStorage` | Qué guarda |
 |---|---|
-| `vinted.etiquetas` | la selección en curso: usuario, artículo, transportista y orden |
-| `vinted.historico` | las ventas ya impresas, la más reciente primero |
+| `vinted.etiquetas` | copia de la selección en curso |
+| `vinted.historico` | copia de las ventas impresas |
+| `vinted.codigo` | el código, para no pedírtelo cada vez |
 
-Cada entrada lleva un `id` propio, para poder quitar una del medio sin descolocar
-las demás. Si el JSON guardado estuviera corrupto, `carga()` lo descarta y
-arranca con la cola vacía en vez de romperse.
+Las subidas se agrupan: escribir diez etiquetas seguidas es **una** llamada al
+servidor, no diez. Si el JSON estuviera corrupto, se descarta y se arranca vacío
+en vez de romperse — tanto en el navegador como en la función.
+
+**Un solo dueño.** No hay usuarios: hay un código y unos datos. Quien tenga el
+código lo ve todo, y si dos pestañas escriben a la vez gana la última.
 
 ## La hoja
 
@@ -106,9 +140,12 @@ npm i        # una vez, instala jsdom
 npm test
 ```
 
-Carga la página en un DOM de mentira y comprueba 34 cosas: que arranca sin
-errores, que añadir y quitar funciona, que 11 etiquetas dan 2 páginas, que se
-guarda en `localStorage`, y todo el flujo de ventas guardadas.
+Carga la página en un DOM de mentira, con un servidor fingido, y comprueba 56
+cosas: que arranca sin
+errores, que la puerta del código no se abre con la clave mala, que 11 etiquetas
+dan 2 páginas, que diez altas seguidas son una sola subida, que lo del servidor
+pisa la copia local, que sin red se sigue trabajando, y todo el flujo de ventas
+guardadas.
 
 Pásala siempre antes de un `push`. Existe porque una vez se subió el archivo con
 medio JavaScript borrado: la sintaxis era válida, `node --check` daba el visto

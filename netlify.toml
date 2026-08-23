@@ -1,7 +1,13 @@
-# Sitio estático: no hay build. Se publica la raíz tal cual.
+# Sitio estático con una función para guardar los datos. No hay build de la web:
+# se publica la raíz tal cual. Netlify instala las dependencias por su cuenta
+# porque hay package.json, y empaqueta lo que encuentre en functions.directory.
 [build]
   publish = "."
   command = ""
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 [[headers]]
   for = "/*"

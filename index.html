@@ -111,6 +111,18 @@ ul.hist li:first-child{border-top:0}
 .medidor-tx{font-size:13.5px;color:var(--tx2)}
 .medidor-tx b{color:var(--tx);font-weight:700}
 
+/* ---------- Estado del guardado ---------- */
+.estado{
+  display:flex;align-items:center;gap:8px;
+  font-size:12.5px;color:var(--tx2);margin:14px 0 0;justify-content:center;
+}
+.estado .luz{width:8px;height:8px;border-radius:50%;background:#4a544e;flex:0 0 auto}
+.estado.va .luz{background:#3f9c78}
+.estado.yendo .luz{background:#c9a227}
+.estado.mal{color:#e9a3a3}
+.estado.mal .luz{background:#E2001A}
+.estado .btn{margin-left:4px}
+
 /* ---------- Avisos ---------- */
 .parte{
   margin:12px 0 0;padding:12px 13px;border-radius:var(--r2);
@@ -175,6 +187,19 @@ ul.hist li:first-child{border-top:0}
     <h1>Etiquetas Vinted<small id="sub">Aún no hay etiquetas</small></h1>
   </div>
 
+  <section class="card" id="tarjetaCodigo" hidden>
+    <h2>Código de acceso</h2>
+    <p class="aviso" style="margin:0 0 12px">Tus etiquetas se guardan en el servidor, no en este navegador.
+      Escribe el código y las tendrás igual desde el móvil, desde el ordenador o en una ventana de incógnito.</p>
+    <label class="lab" for="mCodigo">Código</label>
+    <input class="campo mono" id="mCodigo" type="password" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <div class="hueco"></div>
+    <button class="btn pri ancho" id="btnEntrar" type="button">Entrar</button>
+    <p class="error" id="cError" hidden></p>
+  </section>
+
+  <div id="contenido" hidden>
+
   <section class="card">
     <h2>Añadir a mano</h2>
     <label class="lab" for="mUsuario">Usuario de Vinted</label>
@@ -216,6 +241,11 @@ ul.hist li:first-child{border-top:0}
   <button class="btn ancho" id="btnGuardar" type="button">Guardar selección</button>
   <div class="hueco"></div>
   <button class="btn peli ancho" id="btnVaciar" type="button">Vaciar</button>
+
+  <p class="estado" id="estado"><span class="luz"></span><span id="estadoTx"></span>
+    <button class="btn chico" id="btnSalir" type="button">Olvidar código</button></p>
+
+  </div>
 </div>
 
 <div id="hoja"></div>
@@ -225,7 +255,8 @@ ul.hist li:first-child{border-top:0}
 'use strict';
 
 /* ============ Constantes ============ */
-var K_ET='vinted.etiquetas', K_HI='vinted.historico';
+var K_ET='vinted.etiquetas', K_HI='vinted.historico', K_COD='vinted.codigo';
+var RUTA='/api/datos';
 var POR_HOJA=10;
 
 var TRANS={
@@ -255,55 +286,51 @@ function rotulo(e){
 }
 
 /* ============ Estado ============ */
-var etiquetas=[], historico=[];
+var etiquetas=[], historico=[], codigo='';
 
+function normalizaEtiquetas(lista){
+  if(!Array.isArray(lista)) return [];
+  return lista.filter(function(e){ return e && typeof e==='object' && e.usuario; })
+    .map(function(e){
+      return {
+        id: e.id || id(),
+        usuario: String(e.usuario),
+        articulo: e.articulo ? String(e.articulo) : '',
+        transportista: TRANS[e.transportista] ? e.transportista : 'otro',
+        otroNombre: e.otroNombre ? String(e.otroNombre) : ''
+      };
+    });
+}
+function normalizaHistorico(lista){
+  if(!Array.isArray(lista)) return [];
+  return lista.filter(function(v){ return v && typeof v==='object' && Array.isArray(v.etiquetas); })
+    .map(function(v){
+      return {
+        id: v.id || id(),
+        nombre: String(v.nombre || 'Venta sin nombre'),
+        cuando: Number(v.cuando) || 0,
+        etiquetas: normalizaEtiquetas(v.etiquetas)
+      };
+    });
+}
+
+// El servidor manda, pero se guarda una copia local para tener algo que enseñar
+// mientras baja, y para no quedarse en blanco si no hay cobertura.
 function carga(){
+  try{ etiquetas=normalizaEtiquetas(JSON.parse(localStorage.getItem(K_ET)||'[]')); }
+  catch(err){ etiquetas=[]; }
+  try{ historico=normalizaHistorico(JSON.parse(localStorage.getItem(K_HI)||'[]')); }
+  catch(err){ historico=[]; }
+  try{ codigo=localStorage.getItem(K_COD) || ''; }catch(err){ codigo=''; }
+}
+function guardaCache(){
   try{
-    var crudo=localStorage.getItem(K_ET);
-    var lista=crudo ? JSON.parse(crudo) : [];
-    if(!Array.isArray(lista)) lista=[];
-    etiquetas=lista.filter(function(e){ return e && typeof e==='object' && e.usuario; })
-      .map(function(e){
-        return {
-          id: e.id || id(),
-          usuario: String(e.usuario),
-          articulo: e.articulo ? String(e.articulo) : '',
-          transportista: TRANS[e.transportista] ? e.transportista : 'otro',
-          otroNombre: e.otroNombre ? String(e.otroNombre) : ''
-        };
-      });
-  }catch(err){ etiquetas=[]; }
-
-  try{
-    var crudoH=localStorage.getItem(K_HI);
-    var listaH=crudoH ? JSON.parse(crudoH) : [];
-    if(!Array.isArray(listaH)) listaH=[];
-    historico=listaH.filter(function(v){ return v && typeof v==='object' && Array.isArray(v.etiquetas); })
-      .map(function(v){
-        return {
-          id: v.id || id(),
-          nombre: String(v.nombre || 'Venta sin nombre'),
-          cuando: Number(v.cuando) || 0,
-          etiquetas: v.etiquetas.filter(function(e){ return e && e.usuario; }).map(function(e){
-            return {
-              usuario: String(e.usuario),
-              articulo: e.articulo ? String(e.articulo) : '',
-              transportista: TRANS[e.transportista] ? e.transportista : 'otro',
-              otroNombre: e.otroNombre ? String(e.otroNombre) : ''
-            };
-          })
-        };
-      });
-  }catch(err){ historico=[]; }
+    localStorage.setItem(K_ET, JSON.stringify(etiquetas));
+    localStorage.setItem(K_HI, JSON.stringify(historico));
+  }catch(err){}
 }
-function guarda(){
-  try{ localStorage.setItem(K_ET, JSON.stringify(etiquetas)); }
-  catch(err){ alerta($('#mError'),'No se ha podido guardar en este navegador.'); }
-}
-function guardaHist(){
-  try{ localStorage.setItem(K_HI, JSON.stringify(historico)); }
-  catch(err){ alerta($('#mError'),'No cabe más en este navegador: borra alguna venta guardada.'); }
-}
+function guarda(){ guardaCache(); sube(); }
+function guardaHist(){ guarda(); }
 
 /* ============ Selectores de transportista ============ */
 function pintaTrans(caja, sel, alElegir){
@@ -419,6 +446,109 @@ function pintaHoja(){
       '</article>';
     }).join('')+'</div>';
   }).join('');
+}
+
+/* ============ El servidor ============ */
+var relojSubida=null, subiendo=false, pendiente=false;
+
+function pintaEstado(clase, texto){
+  $('#estado').className='estado'+(clase ? ' '+clase : '');
+  $('#estadoTx').textContent=texto;
+}
+
+function llama(metodo, cuerpo){
+  var o={method:metodo, headers:{'x-codigo':codigo}};
+  if(cuerpo){ o.headers['content-type']='application/json'; o.body=JSON.stringify(cuerpo); }
+  return fetch(RUTA, o).then(function(r){
+    if(r.status===401){ var e=new Error('Código incorrecto.'); e.codigoMal=true; throw e; }
+    if(!r.ok){
+      return r.json().catch(function(){ return {}; }).then(function(d){
+        throw new Error(d.error || ('Error '+r.status));
+      });
+    }
+    return r.json();
+  });
+}
+
+function baja(){
+  pintaEstado('yendo','Trayendo del servidor…');
+  return llama('GET').then(function(d){
+    var suyas=normalizaEtiquetas(d.etiquetas);
+    var suHist=normalizaHistorico(d.historico);
+
+    // La primera vez el servidor está vacío y este navegador puede traer trabajo
+    // de cuando no había servidor. Se sube en vez de borrárselo por encima.
+    if(!suyas.length && !suHist.length && (etiquetas.length || historico.length)){
+      pintaEstado('yendo','Subiendo lo que había guardado aquí…');
+      return llama('PUT', {etiquetas:etiquetas, historico:historico}).then(function(){
+        render(); pintaHistorico();
+        pintaEstado('va','Guardado en el servidor');
+      });
+    }
+
+    etiquetas=suyas; historico=suHist;
+    guardaCache();
+    render(); pintaHistorico();
+    pintaEstado('va','Guardado en el servidor');
+  });
+}
+
+// Se espera medio segundo antes de subir: escribir tres etiquetas seguidas es
+// una subida, no tres. Y si llega un cambio mientras sube, se encola una sola
+// repetición en vez de amontonar peticiones.
+function sube(){
+  if(!codigo) return;
+  clearTimeout(relojSubida);
+  pintaEstado('yendo','Guardando…');
+  relojSubida=setTimeout(subeYa, 500);
+}
+function subeYa(){
+  if(!codigo) return;
+  if(subiendo){ pendiente=true; return; }
+  subiendo=true;
+  llama('PUT', {etiquetas:etiquetas, historico:historico}).then(function(){
+    pintaEstado('va','Guardado en el servidor');
+  }).catch(function(err){
+    if(err.codigoMal){ olvida(); pideCodigo('El código ha dejado de valer. Escríbelo otra vez.'); }
+    else pintaEstado('mal','No se ha podido guardar: '+err.message);
+  }).then(function(){
+    subiendo=false;
+    if(pendiente){ pendiente=false; subeYa(); }
+  });
+}
+
+function pideCodigo(mensaje){
+  $('#contenido').hidden=true;
+  $('#tarjetaCodigo').hidden=false;
+  alerta($('#cError'), mensaje||'');
+  $('#mCodigo').value='';
+  $('#mCodigo').focus();
+}
+function olvida(){
+  codigo='';
+  try{ localStorage.removeItem(K_COD); }catch(err){}
+}
+function entra(){
+  var c=$('#mCodigo').value.trim();
+  if(!c){ alerta($('#cError'),'Escribe el código.'); return; }
+  codigo=c;
+  $('#btnEntrar').disabled=true;
+  alerta($('#cError'),'');
+  baja().then(function(){
+    try{ localStorage.setItem(K_COD, codigo); }catch(err){}
+    $('#tarjetaCodigo').hidden=true;
+    $('#contenido').hidden=false;
+  }).catch(function(err){
+    codigo='';
+    alerta($('#cError'), err.codigoMal ? 'Ese código no es.' : 'No se ha podido conectar: '+err.message);
+  }).then(function(){ $('#btnEntrar').disabled=false; });
+}
+// Olvidar el código no borra nada del servidor: solo deja de recordarlo aquí.
+function sal(){
+  olvida();
+  etiquetas=[]; historico=[];
+  guardaCache(); render(); pintaHistorico();
+  pideCodigo('Olvidado en este navegador. Tus ventas siguen en el servidor.');
 }
 
 /* ============ Ventas guardadas ============ */
@@ -570,6 +700,19 @@ $('#mUsuario').addEventListener('keydown', function(e){ if(e.key==='Enter') aña
 $('#mArticulo').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
 $('#btnImprimir').addEventListener('click', imprime);
 $('#btnGuardar').addEventListener('click', guardaSeleccion);
+$('#btnEntrar').addEventListener('click', entra);
+$('#mCodigo').addEventListener('keydown', function(e){ if(e.key==='Enter') entra(); });
+$('#btnSalir').addEventListener('click', sal);
+
+if(codigo){
+  $('#contenido').hidden=false;
+  baja().catch(function(err){
+    if(err.codigoMal){ olvida(); pideCodigo('El código ha dejado de valer. Escríbelo otra vez.'); }
+    else pintaEstado('mal','Sin conexión con el servidor: esto es la última copia de este navegador');
+  });
+}else{
+  pideCodigo('');
+}
 $('#btnVaciar').addEventListener('click', vaciar);
 })();
 </script>

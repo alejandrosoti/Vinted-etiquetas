@@ -28,12 +28,35 @@ Después, la página te pide el código una vez y lo recuerda en ese navegador.
 
 ## Cómo se usa
 
-Escribes el usuario de Vinted, el artículo (opcional) y eliges transportista.
-**Añadir a la hoja** y se suma a la cola. Cuando tengas las que quieras,
-**Imprimir A4**.
+Escribes el usuario de Vinted, el artículo (opcional), eliges transportista y,
+si quieres, le enganchas una captura. **Añadir a la hoja** y se suma a la cola.
+Cuando tengas las que quieras, **Imprimir A4**.
 
 Se puede añadir con el teclado sin tocar el ratón: `Enter` en cualquiera de los
 dos campos añade la etiqueta y vuelve el cursor a «Usuario».
+
+## Las capturas
+
+Cada etiqueta puede llevar una captura enganchada, opcional. Se elige en el
+formulario, justo después del transportista.
+
+Al elegirla se encoge en el navegador —lado mayor a 1100px, JPEG al 82%— y sube
+al servidor antes de que la etiqueta exista siquiera. De paso se saca una
+miniatura de 150px, que es la que se ve en la fila de la cola: así la lista
+aparece al instante, sin una petición por etiqueta. La grande solo baja cuando
+tocas la miniatura, y se abre a pantalla completa.
+
+Las miniaturas viajan dentro del JSON de datos, unos 3 KB por etiqueta. Las
+grandes van cada una a su propio blob, en el almacén `vinted-fotos`.
+
+**En el papel no sale ninguna.** La hoja A4 lleva usuario, artículo y la banda
+del transportista, y nada más: una captura de móvil no se lee en 95×53mm y solo
+gastaría tinta. Hay dos comprobaciones en la prueba que lo fijan.
+
+La captura vive mientras alguien la mencione. Al quitar una etiqueta de la cola
+su imagen se borra, salvo que una venta guardada siga apuntando a ella. De eso
+se encarga un barrido en el servidor en cada guardado: lo que no menciona nadie,
+se va.
 
 ## Ventas guardadas
 
@@ -91,17 +114,25 @@ En **Netlify Blobs**, bajo una única clave del almacén `vinted`, con la forma
 fuerte: por defecto un cambio tarda hasta un minuto en verse en todas partes, y
 aquí se escribe y se relee en segundos desde el mismo móvil.
 
-La función está en `netlify/functions/datos.mjs` y responde en `/api/datos`:
-`GET` devuelve todo, `PUT` lo reemplaza. Las dos exigen la cabecera `x-codigo`,
-que se compara en tiempo constante para no delatar por el retardo cuántos
-caracteres se han acertado.
+La función está en `netlify/functions/datos.mjs` y atiende dos rutas:
+
+| Ruta | Qué hace |
+|---|---|
+| `/api/datos` | `GET` devuelve todo, `PUT` lo reemplaza y barre capturas huérfanas |
+| `/api/foto/:clave` | `GET` baja una captura, `PUT` la sube, `DELETE` la borra |
+
+Todas exigen la cabecera `x-codigo`, que se compara en tiempo constante para no
+delatar por el retardo cuántos caracteres se han acertado. Ese es el motivo de
+que las miniaturas vayan dentro del JSON en vez de como `<img src>` normales: una
+etiqueta `img` no puede mandar cabeceras, así que cada fila necesitaría una
+llamada con `fetch`.
 
 El navegador guarda además una copia de solo lectura, que es lo que ves mientras
 carga o si te quedas sin red:
 
 | Clave de `localStorage` | Qué guarda |
 |---|---|
-| `vinted.etiquetas` | copia de la selección en curso |
+| `vinted.etiquetas` | copia de la selección en curso, miniaturas incluidas |
 | `vinted.historico` | copia de las ventas impresas |
 | `vinted.codigo` | el código, para no pedírtelo cada vez |
 
@@ -140,12 +171,13 @@ npm i        # una vez, instala jsdom
 npm test
 ```
 
-Carga la página en un DOM de mentira, con un servidor fingido, y comprueba 56
-cosas: que arranca sin
+Carga la página en un DOM de mentira, con un servidor fingido —y con canvas e
+imágenes fingidos, que jsdom no los trae—, y comprueba 78 cosas: que arranca sin
 errores, que la puerta del código no se abre con la clave mala, que 11 etiquetas
 dan 2 páginas, que diez altas seguidas son una sola subida, que lo del servidor
-pisa la copia local, que sin red se sigue trabajando, y todo el flujo de ventas
-guardadas.
+pisa la copia local, que sin red se sigue trabajando, que la captura se borra al
+quitar su etiqueta pero sobrevive si una venta la menciona, que en la hoja de
+impresión no se cuela ninguna imagen, y todo el flujo de ventas guardadas.
 
 Pásala siempre antes de un `push`. Existe porque una vez se subió el archivo con
 medio JavaScript borrado: la sintaxis era válida, `node --check` daba el visto

@@ -111,6 +111,33 @@ ul.hist li:first-child{border-top:0}
 .medidor-tx{font-size:13.5px;color:var(--tx2)}
 .medidor-tx b{color:var(--tx);font-weight:700}
 
+/* ---------- Capturas ---------- */
+.captura{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  border:1px dashed #46504a;border-radius:var(--r2);padding:15px 14px;
+  background:var(--bg);font-weight:700;font-size:14px;width:100%;text-align:center;color:var(--tx2);
+}
+.previa{display:flex;align-items:center;gap:11px;margin-top:10px}
+.previa img{width:52px;height:72px;object-fit:cover;object-position:top;border-radius:7px;border:1px solid var(--bor);background:#000;flex:0 0 auto}
+.previa .crece{flex:1;min-width:0;font-size:13px;color:var(--tx2)}
+.mini-et{
+  width:38px;height:52px;flex:0 0 auto;padding:0;border:1px solid var(--bor);
+  border-radius:6px;overflow:hidden;background:#000;display:block;
+}
+.mini-et img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+
+/* El visor tapa la pantalla entera: una captura de móvil no se lee en miniatura */
+.visor{
+  position:fixed;inset:0;z-index:60;background:rgba(9,11,10,.96);
+  display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+}
+.visor[hidden]{display:none}
+.visor .barra{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px}
+.visor .quien{font-family:"Space Mono",monospace;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.visor .lienzo{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.visor img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.visor .cargando{color:var(--tx2);font-size:14px}
+
 /* ---------- Estado del guardado ---------- */
 .estado{
   display:flex;align-items:center;gap:8px;
@@ -215,6 +242,15 @@ ul.hist li:first-child{border-top:0}
       <input class="campo" id="mOtro" type="text" placeholder="Nombre del transportista">
     </div>
     <div class="hueco"></div>
+    <label class="lab">Captura <span style="font-weight:500">· opcional</span></label>
+    <button class="captura" id="btnCaptura" type="button">Elegir una captura</button>
+    <input id="ficheroFoto" type="file" accept="image/*" hidden>
+    <div class="previa" id="previa" hidden>
+      <img id="previaImg" alt="">
+      <span class="crece" id="previaTx"></span>
+      <button class="btn chico" id="previaQuitar" type="button">Quitar</button>
+    </div>
+    <div class="hueco"></div>
     <button class="btn pri ancho" id="btnAñadir" type="button">Añadir a la hoja</button>
     <p class="error" id="mError" hidden></p>
   </section>
@@ -248,6 +284,14 @@ ul.hist li:first-child{border-top:0}
   </div>
 </div>
 
+<div class="visor" id="visor" hidden>
+  <div class="barra">
+    <span class="quien" id="visorQuien"></span>
+    <button class="btn chico" id="visorCerrar" type="button">Cerrar</button>
+  </div>
+  <div class="lienzo" id="visorLienzo"></div>
+</div>
+
 <div id="hoja"></div>
 
 <script>
@@ -256,7 +300,11 @@ ul.hist li:first-child{border-top:0}
 
 /* ============ Constantes ============ */
 var K_ET='vinted.etiquetas', K_HI='vinted.historico', K_COD='vinted.codigo';
-var RUTA='/api/datos';
+var RUTA='/api/datos', RUTA_FOTO='/api/foto/';
+var LADO=1100, CALIDAD=0.82;
+// La miniatura viaja dentro del JSON: unos 3 KB por etiqueta. Así la fila se
+// ve al instante sin una petición por cada una, y la grande solo baja al tocarla.
+var LADO_MINI=150, CALIDAD_MINI=0.55, TOPE_MINI=24000;
 var POR_HOJA=10;
 
 var TRANS={
@@ -297,7 +345,10 @@ function normalizaEtiquetas(lista){
         usuario: String(e.usuario),
         articulo: e.articulo ? String(e.articulo) : '',
         transportista: TRANS[e.transportista] ? e.transportista : 'otro',
-        otroNombre: e.otroNombre ? String(e.otroNombre) : ''
+        otroNombre: e.otroNombre ? String(e.otroNombre) : '',
+        foto: /^[a-z0-9]{4,40}$/.test(e.foto) ? e.foto : '',
+        mini: (typeof e.mini==='string' && e.mini.slice(0,23)==='data:image/jpeg;base64,'
+               && e.mini.length<=TOPE_MINI) ? e.mini : ''
       };
     });
 }
@@ -366,8 +417,11 @@ function añadeManual(){
   alerta($('#mError'),'');
   etiquetas.push({
     id:id(), usuario:u, articulo:$('#mArticulo').value.trim(),
-    transportista:mSel, otroNombre: mSel==='otro' ? $('#mOtro').value.trim() : ''
+    transportista:mSel, otroNombre: mSel==='otro' ? $('#mOtro').value.trim() : '',
+    foto: fotoPendiente ? fotoPendiente.clave : '',
+    mini: fotoPendiente ? fotoPendiente.mini : ''
   });
+  fotoPendiente=null; pintaPrevia(); $('#ficheroFoto').value='';
   guarda(); render();
   $('#mUsuario').value=''; $('#mArticulo').value='';
   $('#mUsuario').focus();
@@ -411,6 +465,7 @@ function render(){
           (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
           '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
         '</span>'+
+        (e.mini ? '<button class="mini-et" type="button" data-foto="'+esc(e.id)+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>' : '')+
         '<button class="quitar" type="button" data-id="'+esc(e.id)+'" aria-label="Quitar '+esc(e.usuario)+'">&times;</button>'+
       '</li>';
     }).join('')+'</ul>';
@@ -419,6 +474,13 @@ function render(){
         var q=b.getAttribute('data-id');
         etiquetas=etiquetas.filter(function(e){ return e.id!==q; });
         guarda(); render();
+      });
+    });
+    Array.prototype.forEach.call(wrap.querySelectorAll('.mini-et'), function(b){
+      b.addEventListener('click', function(){
+        var q=b.getAttribute('data-foto');
+        var e=etiquetas.filter(function(x){ return x.id===q; })[0];
+        if(e) abreFoto(e);
       });
     });
   }
@@ -446,6 +508,122 @@ function pintaHoja(){
       '</article>';
     }).join('')+'</div>';
   }).join('');
+}
+
+/* ============ Capturas ============ */
+var fotoPendiente=null;   // {clave, dataUrl, bytes} elegida y aún sin etiqueta
+
+// Se encoge en el navegador antes de subirla: una captura de móvil son 3 MB y
+// para leer un usuario y un artículo sobra con la décima parte.
+function encoge(fichero){
+  return new Promise(function(ok, mal){
+    var url=URL.createObjectURL(fichero);
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var f=Math.min(1, LADO/Math.max(img.naturalWidth, img.naturalHeight));
+        var cv=document.createElement('canvas');
+        cv.width=Math.max(1, Math.round(img.naturalWidth*f));
+        cv.height=Math.max(1, Math.round(img.naturalHeight*f));
+        var cx=cv.getContext('2d');
+        cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height);
+        cx.drawImage(img,0,0,cv.width,cv.height);
+        var dataUrl=cv.toDataURL('image/jpeg', CALIDAD);
+
+        var g=Math.min(1, LADO_MINI/Math.max(img.naturalWidth, img.naturalHeight));
+        var cm=document.createElement('canvas');
+        cm.width=Math.max(1, Math.round(img.naturalWidth*g));
+        cm.height=Math.max(1, Math.round(img.naturalHeight*g));
+        var cmx=cm.getContext('2d');
+        cmx.fillStyle='#fff'; cmx.fillRect(0,0,cm.width,cm.height);
+        cmx.drawImage(img,0,0,cm.width,cm.height);
+        var mini=cm.toDataURL('image/jpeg', CALIDAD_MINI);
+
+        URL.revokeObjectURL(url);
+        cv.toBlob(function(b){
+          if(b) ok({dataUrl:dataUrl, mini:mini, blob:b});
+          else mal(new Error('No se ha podido preparar la imagen.'));
+        }, 'image/jpeg', CALIDAD);
+      }catch(err){ URL.revokeObjectURL(url); mal(err); }
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); mal(new Error('No se ha podido abrir la imagen.')); };
+    img.src=url;
+  });
+}
+
+function eligeFoto(fichero){
+  if(!/^image\//.test(fichero.type)){ alerta($('#mError'),'Eso no es una imagen.'); return; }
+  alerta($('#mError'),'');
+  $('#btnCaptura').disabled=true;
+  $('#btnCaptura').textContent='Preparando…';
+  encoge(fichero).then(function(r){
+    var clave=id();
+    return subeFoto(clave, r.blob).then(function(){
+      fotoPendiente={clave:clave, dataUrl:r.dataUrl, mini:r.mini, bytes:r.blob.size};
+      pintaPrevia();
+    });
+  }).catch(function(err){
+    alerta($('#mError'), 'La captura no ha subido: '+err.message);
+  }).then(function(){
+    $('#btnCaptura').disabled=false;
+    $('#btnCaptura').textContent='Elegir una captura';
+  });
+}
+
+function pintaPrevia(){
+  var caja=$('#previa');
+  if(!fotoPendiente){ caja.hidden=true; $('#previaImg').removeAttribute('src'); return; }
+  caja.hidden=false;
+  $('#previaImg').src=fotoPendiente.dataUrl;
+  $('#previaTx').textContent='Lista, '+Math.round(fotoPendiente.bytes/1024)+' KB. Se guarda con esta etiqueta.';
+}
+
+function olvidaFoto(){
+  if(fotoPendiente) borraFoto(fotoPendiente.clave);
+  fotoPendiente=null;
+  pintaPrevia();
+  $('#ficheroFoto').value='';
+}
+
+function subeFoto(clave, blob){
+  return fetch(RUTA_FOTO+clave, {
+    method:'PUT', headers:{'x-codigo':codigo, 'content-type':'image/jpeg'}, body:blob
+  }).then(function(r){
+    if(r.status===401){ var e=new Error('Código incorrecto.'); e.codigoMal=true; throw e; }
+    if(!r.ok) throw new Error('Error '+r.status);
+    return r.json();
+  });
+}
+// Sin await ni aviso: si falla, el barrido del servidor la recoge en la siguiente subida.
+function borraFoto(clave){
+  fetch(RUTA_FOTO+clave, {method:'DELETE', headers:{'x-codigo':codigo}}).catch(function(){});
+}
+
+/* ---------- El visor ---------- */
+function abreFoto(e){
+  var v=$('#visor');
+  v.hidden=false;
+  document.body.style.overflow='hidden';
+  $('#visorQuien').textContent=e.usuario;
+  $('#visorLienzo').innerHTML='<span class="cargando">Trayendo la captura…</span>';
+  fetch(RUTA_FOTO+e.foto, {headers:{'x-codigo':codigo}}).then(function(r){
+    if(!r.ok) throw new Error(r.status===404 ? 'Esa captura ya no está.' : 'Error '+r.status);
+    return r.blob();
+  }).then(function(b){
+    var url=URL.createObjectURL(b);
+    var img=new Image();
+    img.onload=function(){ URL.revokeObjectURL(url); };
+    img.src=url;
+    $('#visorLienzo').innerHTML='';
+    $('#visorLienzo').appendChild(img);
+  }).catch(function(err){
+    $('#visorLienzo').innerHTML='<span class="cargando">'+esc(err.message)+'</span>';
+  });
+}
+function cierraFoto(){
+  $('#visor').hidden=true;
+  document.body.style.overflow='';
+  $('#visorLienzo').innerHTML='';
 }
 
 /* ============ El servidor ============ */
@@ -563,7 +741,8 @@ function archiva(){
   var v={
     id:id(), nombre:'Venta '+sello(new Date()), cuando:Date.now(),
     etiquetas: etiquetas.map(function(e){
-      return {usuario:e.usuario, articulo:e.articulo, transportista:e.transportista, otroNombre:e.otroNombre};
+      return {usuario:e.usuario, articulo:e.articulo, transportista:e.transportista,
+              otroNombre:e.otroNombre, foto:e.foto||'', mini:e.mini||''};
     })
   };
   historico.unshift(v);
@@ -596,6 +775,7 @@ function pintaHistorico(){
               (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
               '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
             '</span>'+
+            (e.mini ? '<button class="mini-et" type="button" data-foto="'+esc(e.foto)+'" data-quien="'+esc(e.usuario)+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>' : '')+
           '</li>';
         }).join('')+'</ul>'+
         '<div class="hueco"></div>'+
@@ -614,6 +794,11 @@ function pintaHistorico(){
       cab.setAttribute('aria-expanded', abre ? 'true' : 'false');
     });
     $('.devolver',li).addEventListener('click', function(){ devuelve(v); });
+    Array.prototype.forEach.call(li.querySelectorAll('.mini-et'), function(b){
+      b.addEventListener('click', function(){
+        abreFoto({usuario:b.getAttribute('data-quien'), foto:b.getAttribute('data-foto')});
+      });
+    });
   });
 }
 
@@ -623,7 +808,8 @@ function devuelve(v){
   v.etiquetas.forEach(function(e){
     etiquetas.push({
       id:id(), usuario:e.usuario, articulo:e.articulo||'',
-      transportista:e.transportista, otroNombre:e.otroNombre||''
+      transportista:e.transportista, otroNombre:e.otroNombre||'',
+      foto:e.foto||'', mini:e.mini||''
     });
   });
   guarda(); render();
@@ -703,6 +889,16 @@ $('#btnGuardar').addEventListener('click', guardaSeleccion);
 $('#btnEntrar').addEventListener('click', entra);
 $('#mCodigo').addEventListener('keydown', function(e){ if(e.key==='Enter') entra(); });
 $('#btnSalir').addEventListener('click', sal);
+$('#btnCaptura').addEventListener('click', function(){ $('#ficheroFoto').click(); });
+$('#ficheroFoto').addEventListener('change', function(){
+  // Copiar antes de vaciar el input: el FileList es el mismo objeto y se vacía con él.
+  var f=(this.files||[])[0];
+  this.value='';
+  if(f) eligeFoto(f);
+});
+$('#previaQuitar').addEventListener('click', olvidaFoto);
+$('#visorCerrar').addEventListener('click', cierraFoto);
+$('#visor').addEventListener('click', function(e){ if(e.target===this) cierraFoto(); });
 
 if(codigo){
   $('#contenido').hidden=false;

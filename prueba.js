@@ -22,7 +22,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
    comprobar que se manda el código y que no se sube más de la cuenta. */
 function montaApp(datosIniciales, opciones = {}) {
   const codigoBueno = opciones.codigoBueno || 'abrete-sesamo';
-  const servidor = { datos: datosIniciales || { etiquetas: [], historico: [] }, llamadas: [] };
+  const servidor = { datos: datosIniciales || { etiquetas: [], historico: [] }, llamadas: [], fotos: new Map() };
   const errores = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', e => errores.push(e.message.split('\n')[0]));
@@ -34,6 +34,23 @@ function montaApp(datosIniciales, opciones = {}) {
       if (opciones.cacheVieja) w.localStorage.setItem('vinted.etiquetas', JSON.stringify(opciones.cacheVieja));
       if (opciones.caido) servidor.caido = true;
       w.print = () => { w.__imprimio = (w.__imprimio || 0) + 1; };
+
+      // jsdom no trae canvas ni carga imágenes: se fingen las tres piezas que
+      // usa encoge(), para poder probar el flujo entero sin un navegador.
+      w.HTMLCanvasElement.prototype.getContext = () => ({ fillStyle: '', fillRect() {}, drawImage() {} });
+      w.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,LzlqLzRBQQ==';
+      w.HTMLCanvasElement.prototype.toBlob = function (cb) {
+        cb(new w.Blob([new Uint8Array(4321)], { type: 'image/jpeg' }));
+      };
+      w.URL.createObjectURL = () => 'blob:fingido';
+      w.URL.revokeObjectURL = () => {};
+      Object.defineProperty(w.Image.prototype, 'naturalWidth', { get: () => 1080, configurable: true });
+      Object.defineProperty(w.Image.prototype, 'naturalHeight', { get: () => 2400, configurable: true });
+      Object.defineProperty(w.HTMLImageElement.prototype, 'src', {
+        configurable: true,
+        get() { return this.getAttribute('src') || ''; },
+        set(v) { this.setAttribute('src', v); const yo = this; setTimeout(() => { if (yo.onload) yo.onload(); }, 0); }
+      });
       w.fetch = (ruta, o = {}) => {
         const cod = (o.headers || {})['x-codigo'];
         servidor.llamadas.push({ metodo: o.method || 'GET', ruta, codigo: cod });
@@ -42,8 +59,24 @@ function montaApp(datosIniciales, opciones = {}) {
         });
         if (servidor.caido) return Promise.reject(new Error('Failed to fetch'));
         if (cod !== codigoBueno) return resp({ error: 'Código incorrecto.' }, 401);
-        if ((o.method || 'GET') === 'GET') return resp(servidor.datos, 200);
+        const metodo = o.method || 'GET';
+
+        if (ruta.startsWith('/api/foto/')) {
+          const clave = ruta.slice('/api/foto/'.length);
+          if (metodo === 'PUT') { servidor.fotos.set(clave, o.body); return resp({ ok: true }, 200); }
+          if (metodo === 'DELETE') { servidor.fotos.delete(clave); return resp({ ok: true }, 200); }
+          if (!servidor.fotos.has(clave)) return resp({ error: 'Esa captura ya no está.' }, 404);
+          return Promise.resolve({ ok: true, status: 200, blob: () => Promise.resolve(servidor.fotos.get(clave)) });
+        }
+
+        if (metodo === 'GET') return resp(servidor.datos, 200);
         servidor.datos = JSON.parse(o.body);
+        // El barrido de capturas huérfanas, igual que en la función de verdad.
+        const vivas = new Set();
+        for (const e of servidor.datos.etiquetas) if (e && e.foto) vivas.add(e.foto);
+        for (const v of servidor.datos.historico)
+          for (const e of (v.etiquetas || [])) if (e && e.foto) vivas.add(e.foto);
+        for (const k of [...servidor.fotos.keys()]) if (!vivas.has(k)) servidor.fotos.delete(k);
         return resp({ ok: true }, 200);
       };
     }
@@ -96,11 +129,76 @@ function montaApp(datosIniciales, opciones = {}) {
   comprueba('diez altas seguidas son una sola subida', despues - antes === 1, despues - antes);
   comprueba('el servidor tiene las 11', servidor.datos.etiquetas.length === 11);
 
+  // ================= capturas =================
+  const eligeUna = (dom, nombre = 'captura.jpg', tipo = 'image/jpeg') => {
+    const inp = dom.d.querySelector('#ficheroFoto');
+    Object.defineProperty(inp, 'files', {
+      configurable: true,
+      value: [new dom.w.File([new Uint8Array(900000)], nombre, { type: tipo })]
+    });
+    inp.dispatchEvent(new dom.w.Event('change'));
+  };
+
+  const antesFotos = servidor.fotos.size;
+  eligeUna({ d, w });
+  await espera(40);
+  comprueba('la captura elegida sube al servidor', servidor.fotos.size === antesFotos + 1, servidor.fotos.size);
+  comprueba('y se enseña la previa', $('#previa').hidden === false);
+  comprueba('diciendo lo que pesa ya encogida', /KB/.test($('#previaTx').textContent), $('#previaTx').textContent);
+
+  $('#mUsuario').value = 'con-captura';
+  $('#btnAñadir').click();
+  await espera(700);
+  const conFoto = servidor.datos.etiquetas.filter(e => e.usuario === 'con-captura')[0];
+  comprueba('la etiqueta se queda con su captura', !!(conFoto && conFoto.foto), JSON.stringify(conFoto));
+  comprueba('la previa se limpia para la siguiente', $('#previa').hidden === true);
+  comprueba('sale la miniatura en su fila', d.querySelectorAll('#colaWrap .mini-et').length === 1);
+  comprueba('y solo en la suya', d.querySelectorAll('#colaWrap ul.cola > li').length === 12);
+
+  // el orden del formulario y la hoja limpia
+  const campos = [...d.querySelectorAll('#tpManual, .card')]
+    .map(c => c.textContent).join(' ');
+  const tras = d.querySelector('#btnCaptura').compareDocumentPosition(d.querySelector('#mTrans'));
+  comprueba('la captura va DESPUÉS del transportista', (tras & 2) !== 0);
+  comprueba('y ANTES de "Añadir a la hoja"',
+            (d.querySelector('#btnCaptura').compareDocumentPosition(d.querySelector('#btnAñadir')) & 4) !== 0);
+  comprueba('la hoja de impresión no lleva ni una imagen',
+            d.querySelectorAll('#hoja img').length === 0, d.querySelectorAll('#hoja img').length);
+  comprueba('ni miniaturas coladas en la hoja',
+            d.querySelectorAll('#hoja .mini-et').length === 0);
+
+  // tocar la etiqueta enseña la captura
+  d.querySelector('#colaWrap .mini-et').click();
+  comprueba('al tocarla se abre el visor', $('#visor').hidden === false);
+  comprueba('con el usuario en la barra', $('#visorQuien').textContent === 'con-captura');
+  await espera(40);
+  comprueba('y trae la imagen', !!$('#visorLienzo img'), $('#visorLienzo').textContent);
+  $('#visorCerrar').click();
+  comprueba('se cierra', $('#visor').hidden === true);
+
+  // quitar la etiqueta se lleva su captura
+  const clavesAntes = servidor.fotos.size;
+  const quitar = [...d.querySelectorAll('#colaWrap ul.cola > li')]
+    .filter(li => li.textContent.includes('con-captura'))[0].querySelector('.quitar');
+  quitar.click();
+  await espera(700);
+  comprueba('quitar la etiqueta borra su captura', servidor.fotos.size === clavesAntes - 1, servidor.fotos.size);
+  comprueba('y la fila desaparece', d.querySelectorAll('#colaWrap ul.cola > li').length === 11);
+
+  // una captura que sigue viva porque la referencia una venta
+  eligeUna({ d, w });
+  await espera(40);
+  $('#mUsuario').value = 'va-al-historico';
+  $('#btnAñadir').click();
+  await espera(700);
+  const laClave = servidor.datos.etiquetas.filter(e => e.usuario === 'va-al-historico')[0].foto;
+  comprueba('la captura está guardada', servidor.fotos.has(laClave));
+
   // ================= guardar selección NO archiva =================
   $('#btnGuardar').click();
   await espera(700);
   comprueba('guardar selección NO crea una venta', servidor.datos.historico.length === 0);
-  comprueba('guardar selección NO vacía la cola', d.querySelectorAll('#colaWrap ul.cola > li').length === 11);
+  comprueba('guardar selección NO vacía la cola', d.querySelectorAll('#colaWrap ul.cola > li').length === 12);
   comprueba('el histórico sigue vacío en pantalla', d.querySelectorAll('ul.hist > li').length === 0);
 
   // ================= el histórico solo nace al imprimir =================
@@ -108,13 +206,14 @@ function montaApp(datosIniciales, opciones = {}) {
   comprueba('imprimir llama a window.print()', w.__imprimio === 1);
   await espera(700);
   comprueba('imprimir sí crea la venta', servidor.datos.historico.length === 1, servidor.datos.historico.length);
-  comprueba('con las 11 etiquetas dentro', servidor.datos.historico[0].etiquetas.length === 11);
+  comprueba('con las 12 etiquetas dentro', servidor.datos.historico[0].etiquetas.length === 12);
   comprueba('nombre "Venta dd/mm/aaaa hh:mm"', /^Venta \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(servidor.datos.historico[0].nombre), servidor.datos.historico[0].nombre);
   comprueba('pregunta si ha salido bien', /salido bien la impresión/.test($('#parte').textContent));
   comprueba('ofrece las dos salidas', !!$('#siVaciar') && !!$('#noVaciar'));
 
+  comprueba('la captura sobrevive dentro de la venta', servidor.fotos.has(laClave));
   $('#noVaciar').click();
-  comprueba('"No, dejarla" conserva la cola', d.querySelectorAll('#colaWrap ul.cola > li').length === 11);
+  comprueba('"No, dejarla" conserva la cola', d.querySelectorAll('#colaWrap ul.cola > li').length === 12);
   comprueba('y cierra el aviso', $('#parte').hidden === true);
 
   $('#btnImprimir').click();
@@ -123,27 +222,31 @@ function montaApp(datosIniciales, opciones = {}) {
   await espera(700);
   comprueba('el servidor también la vacía', servidor.datos.etiquetas.length === 0);
   comprueba('pero conserva las 2 ventas', servidor.datos.historico.length === 2);
+  comprueba('y la captura archivada NO se barre', servidor.fotos.has(laClave));
 
   // ================= desplegar y devolver =================
   const cab = $('ul.hist .cab');
   comprueba('la venta empieza plegada', $('ul.hist .cuerpo').hidden === true);
   cab.click();
   comprueba('se despliega al tocarla', $('ul.hist .cuerpo').hidden === false);
-  comprueba('enseña quién iba dentro', $('ul.hist .cuerpo').querySelectorAll('li').length === 11);
+  comprueba('enseña quién iba dentro', $('ul.hist .cuerpo').querySelectorAll('li').length === 12);
+  comprueba('con su miniatura en el histórico', $('ul.hist .cuerpo').querySelectorAll('.mini-et').length === 1);
 
   $('ul.hist .devolver').click();
-  comprueba('devuelve las etiquetas a la cola', d.querySelectorAll('#colaWrap ul.cola > li').length === 11);
+  comprueba('devuelve las etiquetas a la cola', d.querySelectorAll('#colaWrap ul.cola > li').length === 12);
   $('ul.hist .devolver').click();
-  comprueba('devolver dos veces suma, no pisa', d.querySelectorAll('#colaWrap ul.cola > li').length === 22);
+  comprueba('devolver dos veces suma, no pisa', d.querySelectorAll('#colaWrap ul.cola > li').length === 24);
   await espera(700);
   const ids = servidor.datos.etiquetas.map(e => e.id);
-  comprueba('con ids nuevos y sin repetir', new Set(ids).size === 22, new Set(ids).size);
+  comprueba('con ids nuevos y sin repetir', new Set(ids).size === 24, new Set(ids).size);
+  comprueba('la captura viaja con la etiqueta devuelta',
+            servidor.datos.etiquetas.filter(e => e.foto === laClave).length === 2);
 
   // ================= olvidar el código =================
   $('#btnSalir').click();
   comprueba('olvidar el código vuelve a tapar la app', $('#contenido').hidden === true);
   comprueba('y lo borra de este navegador', w.localStorage.getItem('vinted.codigo') === null);
-  comprueba('el servidor NO se toca al olvidar', servidor.datos.etiquetas.length === 22);
+  comprueba('el servidor NO se toca al olvidar', servidor.datos.etiquetas.length === 24);
 
   // ================= volver con el código ya guardado =================
   const guardado = servidor.datos;
@@ -156,7 +259,7 @@ function montaApp(datosIniciales, opciones = {}) {
 
   // El servidor manda: la copia vieja del navegador no debe ganar.
   const enPantalla = [...vuelta.d.querySelectorAll('#colaWrap ul.cola .u')].map(e => e.textContent);
-  comprueba('lo del servidor pisa la copia local', enPantalla.length === 22, enPantalla.length);
+  comprueba('lo del servidor pisa la copia local', enPantalla.length === 24, enPantalla.length);
   comprueba('y la copia vieja desaparece', !enPantalla.includes('copia-vieja'));
   comprueba('el histórico también baja', vuelta.d.querySelectorAll('ul.hist > li').length === 2);
   comprueba('dice que está guardado', /Guardado en el servidor/.test(vuelta.d.querySelector('#estado').textContent),

@@ -1,7 +1,7 @@
 /* Guarda la cola y el histórico en Netlify Blobs.
    Una sola clave para todo: aquí no hay usuarios, hay un dueño.
 
-   Necesita la variable de entorno CODIGO_ACCESO en Netlify.
+   Necesita la variable de entorno key_netfilysoti en Netlify.
    Sin ella la función no deja pasar a nadie, ni siquiera al dueño: es
    preferible quedarse fuera que abrir la puerta por un despiste de configuración. */
 
@@ -11,9 +11,9 @@ const CLAVE = 'datos';
 const VACIO = { etiquetas: [], historico: [] };
 
 export default async (req) => {
-  const esperado = process.env.CODIGO_ACCESO;
+  const esperado = process.env.key_netfilysoti;
   if (!esperado) {
-    return respuesta({ error: 'El sitio no tiene CODIGO_ACCESO configurado.' }, 503);
+    return respuesta({ error: 'El sitio no tiene key_netfilysoti configurada.' }, 503);
   }
   if (!mismoTiempo(req.headers.get('x-codigo') || '', esperado)) {
     return respuesta({ error: 'Código incorrecto.' }, 401);

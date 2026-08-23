@@ -16,7 +16,7 @@ La función no deja pasar a nadie hasta que el sitio tenga un código. En Netlif
 
 | Clave | Valor |
 |---|---|
-| `CODIGO_ACCESO` | una clave larga que te inventes |
+| `key_netfilysoti` | una clave larga que te inventes |
 
 Que sea larga y que no se parezca a nada: es lo único que separa tus ventas del
 resto de internet, porque este repositorio es público y la dirección de la

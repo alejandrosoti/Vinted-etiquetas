@@ -52,6 +52,21 @@ input,select{font:inherit}
 .card > h2{margin:0 0 12px;font-size:13px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2)}
 .fila{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 
+/* ---------- Pestañas ---------- */
+.tabs{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+  background:var(--sup);border:1px solid var(--bor);border-radius:var(--r);
+  padding:6px;margin:0 0 14px;
+}
+.tab{
+  background:none;border:0;border-radius:var(--r2);padding:11px 8px;
+  font-size:14px;font-weight:600;color:var(--tx2);text-align:center;
+}
+.tab:active{background:#2c322e}
+.tab[aria-selected="true"]{background:var(--acc);color:var(--tx);font-weight:800}
+.tab[aria-selected="true"]:active{background:var(--acc)}
+.tp[hidden]{display:none}
+
 label.lab{display:block;font-size:12px;font-weight:600;color:var(--tx2);margin:0 0 6px}
 .campo{
   width:100%;background:var(--bg);border:1px solid var(--bor);color:var(--tx);
@@ -107,7 +122,7 @@ ul.cola li:first-child{border-top:0}
 
 /* ---------- Medidor ---------- */
 .medidor{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:0 0 11px}
-.hueco-m{aspect-ratio:45.5/53;border-radius:4px;border:1px dashed #3f4642;background:#1e2321}
+.hueco-m{aspect-ratio:95/53;border-radius:5px;border:1px dashed #3f4642;background:#1e2321}
 .hueco-m.lleno{border:1px solid transparent;background:var(--c)}
 .medidor-tx{font-size:13.5px;color:var(--tx2)}
 .medidor-tx b{color:var(--tx);font-weight:700}
@@ -149,11 +164,11 @@ ul.cola li:first-child{border-top:0}
    Las filas van en minmax(0,1fr) y no en 1fr: 1fr es minmax(auto,1fr), así que
    una etiqueta con el texto largo estira su fila, la hoja pasa de 297mm y
    derrama una tira en el papel siguiente. Con 8 por hoja no se notaba; con 20
-   salían 3 hojas para 21 etiquetas. */
+   salían 3 hojas para 21 etiquetas. No lo cambies a 1fr aunque parezca igual. */
 #hoja{display:none}
 .pagina{
   width:210mm;height:297mm;padding:8mm;background:#fff;
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr));gap:4mm;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr));gap:4mm;
   overflow:hidden;
 }
 .et{
@@ -164,15 +179,15 @@ ul.cola li:first-child{border-top:0}
 .et-band{
   background:var(--c);color:var(--t);
   display:flex;align-items:center;justify-content:space-between;gap:3mm;
-  padding:1.3mm 2mm;
-  font-family:Archivo,sans-serif;font-weight:800;font-size:6pt;letter-spacing:.04em;
+  padding:1.8mm 3mm;
+  font-family:Archivo,sans-serif;font-weight:800;font-size:8pt;letter-spacing:.06em;
   -webkit-print-color-adjust:exact;print-color-adjust:exact;
 }
 .et-band .et-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.et-num{font-family:"Space Mono",monospace;font-weight:700;font-size:6pt;letter-spacing:0;flex:0 0 auto}
-.et-body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:1mm;padding:2mm 2.5mm;overflow:hidden}
-.et-user{font-family:"Space Mono",monospace;font-weight:700;font-size:9pt;line-height:1.16;word-break:break-all;color:#111}
-.et-art{font-family:Archivo,sans-serif;font-weight:500;font-size:6pt;line-height:1.28;color:#5A5A5A;word-break:break-word;
+.et-num{font-family:"Space Mono",monospace;font-weight:700;font-size:8pt;letter-spacing:0;flex:0 0 auto}
+.et-body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:1.4mm;padding:2.5mm 3.5mm;overflow:hidden}
+.et-user{font-family:"Space Mono",monospace;font-weight:700;font-size:13pt;line-height:1.16;word-break:break-all;color:#111}
+.et-art{font-family:Archivo,sans-serif;font-weight:500;font-size:7.5pt;line-height:1.28;color:#5A5A5A;word-break:break-word;
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 
 @media print{
@@ -198,6 +213,30 @@ ul.cola li:first-child{border-top:0}
     <button class="icono" id="btnAjustes" type="button">Ajustes</button>
   </div>
 
+  <div class="tabs" role="tablist" aria-label="Cómo añadir etiquetas">
+    <button class="tab" id="tabCaptura" type="button" role="tab" aria-selected="true" aria-controls="tpCaptura">Desde captura</button>
+    <button class="tab" id="tabManual" type="button" role="tab" aria-selected="false" aria-controls="tpManual">A mano</button>
+  </div>
+
+  <div class="tp" id="tpCaptura" role="tabpanel" aria-labelledby="tabCaptura">
+  <section class="card">
+    <h2>Subir capturas</h2>
+    <label class="lab">Transportista del lote</label>
+    <div class="trans mini" id="lTrans"></div>
+    <div id="lOtroWrap" hidden>
+      <div class="hueco"></div>
+      <input class="campo" id="lOtro" type="text" placeholder="Nombre del transportista">
+    </div>
+    <div class="hueco"></div>
+    <button class="subir" id="btnSubir" type="button">Elegir capturas</button>
+    <input id="ficheros" type="file" accept="image/*" multiple hidden>
+    <p class="aviso">Se leen una a una con Claude. Antes de entrar en la hoja pasan por revisión.</p>
+    <div class="progreso" id="prog" hidden><span id="progTx"></span><span class="rail"><i id="progBar"></i></span></div>
+    <p class="error" id="sError" hidden></p>
+  </section>
+  </div>
+
+  <div class="tp" id="tpManual" role="tabpanel" aria-labelledby="tabManual" hidden>
   <section class="card">
     <h2>Añadir a mano</h2>
     <label class="lab" for="mUsuario">Usuario de Vinted</label>
@@ -216,22 +255,7 @@ ul.cola li:first-child{border-top:0}
     <button class="btn pri ancho" id="btnAñadir" type="button">Añadir a la hoja</button>
     <p class="error" id="mError" hidden></p>
   </section>
-
-  <section class="card">
-    <h2>Subir capturas</h2>
-    <label class="lab">Transportista del lote</label>
-    <div class="trans mini" id="lTrans"></div>
-    <div id="lOtroWrap" hidden>
-      <div class="hueco"></div>
-      <input class="campo" id="lOtro" type="text" placeholder="Nombre del transportista">
-    </div>
-    <div class="hueco"></div>
-    <button class="subir" id="btnSubir" type="button">Elegir capturas</button>
-    <input id="ficheros" type="file" accept="image/*" multiple hidden>
-    <p class="aviso">Se leen una a una con Claude. Antes de entrar en la hoja pasan por revisión.</p>
-    <div class="progreso" id="prog" hidden><span id="progTx"></span><span class="rail"><i id="progBar"></i></span></div>
-    <p class="error" id="sError" hidden></p>
-  </section>
+  </div>
 
   <section class="card">
     <h2>La hoja</h2>
@@ -296,8 +320,8 @@ ul.cola li:first-child{border-top:0}
 'use strict';
 
 /* ============ Constantes ============ */
-var K_ET='vinted.etiquetas', K_KEY='vinted.apikey', K_MOD='vinted.modelo';
-var POR_HOJA=20, LADO=1200, CALIDAD=0.85, MODELO_DEF='claude-haiku-4-5-20251001';
+var K_ET='vinted.etiquetas', K_KEY='vinted.apikey', K_MOD='vinted.modelo', K_TAB='vinted.tab';
+var POR_HOJA=10, LADO=1200, CALIDAD=0.85, MODELO_DEF='claude-haiku-4-5-20251001';
 
 var TRANS={
   inpost:  {nombre:'InPost',        rotulo:'INPOST',        color:'#FFC400', texto:'#16191C'},
@@ -334,7 +358,7 @@ function rotulo(e){
 }
 
 /* ============ Estado ============ */
-var etiquetas=[], apikey='', modelo=MODELO_DEF;
+var etiquetas=[], apikey='', modelo=MODELO_DEF, tabActiva='captura';
 
 function carga(){
   try{
@@ -354,10 +378,26 @@ function carga(){
   }catch(err){ etiquetas=[]; }
   try{ apikey=localStorage.getItem(K_KEY) || ''; }catch(err){ apikey=''; }
   try{ modelo=localStorage.getItem(K_MOD) || MODELO_DEF; }catch(err){ modelo=MODELO_DEF; }
+  try{ tabActiva=localStorage.getItem(K_TAB)==='manual' ? 'manual' : 'captura'; }catch(err){ tabActiva='captura'; }
 }
 function guarda(){
   try{ localStorage.setItem(K_ET, JSON.stringify(etiquetas)); }
-  catch(err){ alerta($('#mError'),'No se ha podido guardar en este navegador.'); }
+  catch(err){ alerta(tabActiva==='manual' ? $('#mError') : $('#sError'),'No se ha podido guardar en este navegador.'); }
+}
+
+/* ============ Pestañas ============ */
+function pintaTabs(){
+  var cap = tabActiva!=='manual';
+  $('#tabCaptura').setAttribute('aria-selected', cap ? 'true' : 'false');
+  $('#tabManual').setAttribute('aria-selected', cap ? 'false' : 'true');
+  $('#tpCaptura').hidden = !cap;
+  $('#tpManual').hidden = cap;
+}
+function vasA(t){
+  tabActiva = t==='manual' ? 'manual' : 'captura';
+  try{ localStorage.setItem(K_TAB, tabActiva); }catch(err){}
+  pintaTabs();
+  if(tabActiva==='manual') $('#mUsuario').focus();
 }
 
 /* ============ Selectores de transportista ============ */
@@ -733,10 +773,13 @@ function guardaAjustes(){
 
 /* ============ Arranque ============ */
 carga();
+pintaTabs();
 pintaManual();
 pintaLote();
 render();
 
+$('#tabCaptura').addEventListener('click', function(){ vasA('captura'); });
+$('#tabManual').addEventListener('click', function(){ vasA('manual'); });
 $('#btnAñadir').addEventListener('click', añadeManual);
 $('#mUsuario').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
 $('#mArticulo').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });

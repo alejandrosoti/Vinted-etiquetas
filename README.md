@@ -37,10 +37,22 @@ dos campos añade la etiqueta y vuelve el cursor a «Usuario».
 
 ## Las capturas
 
-Cada etiqueta puede llevar una captura enganchada, opcional. Se elige en el
-formulario, justo después del transportista.
+Cada etiqueta puede llevar **una** captura enganchada, y es opcional: si no la
+tienes a mano, añades la etiqueta igual y ya se la pondrás. Sirve tanto para la
+captura de la conversación como para el QR de recogida, que suele llegar después
+de haber apuntado la venta.
 
-Al elegirla se encoge en el navegador —lado mayor a 1100px, JPEG al 82%— y sube
+Se engancha de dos maneras:
+
+- **Al crearla**, con el botón que hay justo después del transportista.
+- **Después**, tocando el hueco `+` de su fila. Funciona igual en la cola y
+  dentro de una venta ya guardada, que es donde acaba el QR si el papel ya
+  estaba impreso.
+
+Tocando una miniatura se abre a pantalla completa, con **Cambiar** y **Quitar**.
+Al cambiarla, la imagen anterior se borra del servidor en el momento.
+
+Al engancharla se encoge en el navegador —lado mayor a 1100px, JPEG al 82%— y sube
 al servidor antes de que la etiqueta exista siquiera. De paso se saca una
 miniatura de 150px, que es la que se ve en la fila de la cola: así la lista
 aparece al instante, sin una petición por etiqueta. La grande solo baja cuando
@@ -172,11 +184,12 @@ npm test
 ```
 
 Carga la página en un DOM de mentira, con un servidor fingido —y con canvas e
-imágenes fingidos, que jsdom no los trae—, y comprueba 78 cosas: que arranca sin
+imágenes fingidos, que jsdom no los trae—, y comprueba 89 cosas: que arranca sin
 errores, que la puerta del código no se abre con la clave mala, que 11 etiquetas
 dan 2 páginas, que diez altas seguidas son una sola subida, que lo del servidor
 pisa la copia local, que sin red se sigue trabajando, que la captura se borra al
-quitar su etiqueta pero sobrevive si una venta la menciona, que en la hoja de
+quitar su etiqueta pero sobrevive si una venta la menciona, que se puede
+enganchar y cambiar después dejando limpia la anterior, que en la hoja de
 impresión no se cuela ninguna imagen, y todo el flujo de ventas guardadas.
 
 Pásala siempre antes de un `push`. Existe porque una vez se subió el archivo con

@@ -125,6 +125,13 @@ ul.hist li:first-child{border-top:0}
   border-radius:6px;overflow:hidden;background:#000;display:block;
 }
 .mini-et img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.mini-et.pon{
+  border:1px dashed #46504a;background:var(--bg);color:var(--tx2);
+  font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;
+}
+.mini-et.pon:active{border-color:var(--acc);color:var(--tx)}
+.mini-et.ocupado{opacity:.4;pointer-events:none}
+.visor .barra .fila{gap:8px;flex-wrap:nowrap}
 
 /* El visor tapa la pantalla entera: una captura de móvil no se lee en miniatura */
 .visor{
@@ -287,7 +294,11 @@ ul.hist li:first-child{border-top:0}
 <div class="visor" id="visor" hidden>
   <div class="barra">
     <span class="quien" id="visorQuien"></span>
-    <button class="btn chico" id="visorCerrar" type="button">Cerrar</button>
+    <span class="fila">
+      <button class="btn chico" id="visorCambiar" type="button" hidden>Cambiar</button>
+      <button class="btn chico peli" id="visorQuitar" type="button" hidden>Quitar</button>
+      <button class="btn chico" id="visorCerrar" type="button">Cerrar</button>
+    </span>
   </div>
   <div class="lienzo" id="visorLienzo"></div>
 </div>
@@ -465,7 +476,9 @@ function render(){
           (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
           '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
         '</span>'+
-        (e.mini ? '<button class="mini-et" type="button" data-foto="'+esc(e.id)+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>' : '')+
+        (e.mini
+          ? '<button class="mini-et" type="button" data-ver="'+esc(e.id)+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>'
+          : '<button class="mini-et pon" type="button" data-pon="'+esc(e.id)+'" aria-label="Añadir una captura a '+esc(e.usuario)+'">+</button>')+
         '<button class="quitar" type="button" data-id="'+esc(e.id)+'" aria-label="Quitar '+esc(e.usuario)+'">&times;</button>'+
       '</li>';
     }).join('')+'</ul>';
@@ -478,9 +491,11 @@ function render(){
     });
     Array.prototype.forEach.call(wrap.querySelectorAll('.mini-et'), function(b){
       b.addEventListener('click', function(){
-        var q=b.getAttribute('data-foto');
-        var e=etiquetas.filter(function(x){ return x.id===q; })[0];
-        if(e) abreFoto(e);
+        var pon=b.getAttribute('data-pon');
+        if(pon){ engancha(refCola(pon)); return; }
+        var ver=b.getAttribute('data-ver');
+        var e=etiquetas.filter(function(x){ return x.id===ver; })[0];
+        if(e) abreFoto(e, refCola(ver));
       });
     });
   }
@@ -511,7 +526,28 @@ function pintaHoja(){
 }
 
 /* ============ Capturas ============ */
-var fotoPendiente=null;   // {clave, dataUrl, bytes} elegida y aún sin etiqueta
+var fotoPendiente=null;   // {clave, dataUrl, mini, bytes} elegida y aún sin etiqueta
+var destino=null;         // a qué etiqueta ya existente va la que se está eligiendo
+
+/* Una referencia sabe leer su etiqueta y guardar donde toque, sin que el resto
+   del código tenga que saber si vive en la cola o dentro de una venta ya guardada. */
+function refCola(idEt){
+  return {
+    lee: function(){ return etiquetas.filter(function(x){ return x.id===idEt; })[0]; },
+    graba: function(){ guarda(); render(); }
+  };
+}
+function refVenta(iv, ie){
+  return {
+    lee: function(){ return historico[iv] && historico[iv].etiquetas[ie]; },
+    graba: function(){ guardaHist(); pintaHistorico(); }
+  };
+}
+
+function engancha(ref){
+  destino=ref;
+  $('#ficheroFoto').click();
+}
 
 // Se encoge en el navegador antes de subirla: una captura de móvil son 3 MB y
 // para leer un usuario y un artículo sobra con la décima parte.
@@ -552,22 +588,47 @@ function encoge(fichero){
 }
 
 function eligeFoto(fichero){
+  var ref=destino; destino=null;   // se consume aquí: el siguiente clic empieza limpio
   if(!/^image\//.test(fichero.type)){ alerta($('#mError'),'Eso no es una imagen.'); return; }
   alerta($('#mError'),'');
-  $('#btnCaptura').disabled=true;
-  $('#btnCaptura').textContent='Preparando…';
-  encoge(fichero).then(function(r){
+
+  if(ref) pintaOcupado(true);
+  else { $('#btnCaptura').disabled=true; $('#btnCaptura').textContent='Preparando…'; }
+
+  return encoge(fichero).then(function(r){
     var clave=id();
     return subeFoto(clave, r.blob).then(function(){
-      fotoPendiente={clave:clave, dataUrl:r.dataUrl, mini:r.mini, bytes:r.blob.size};
-      pintaPrevia();
+      if(!ref){
+        fotoPendiente={clave:clave, dataUrl:r.dataUrl, mini:r.mini, bytes:r.blob.size};
+        pintaPrevia();
+        return;
+      }
+      var e=ref.lee();
+      if(!e){ borraFoto(clave); return; }        // la quitaron mientras subía
+      if(e.foto && e.foto!==clave) borraFoto(e.foto);
+      e.foto=clave; e.mini=r.mini;
+      ref.graba();
     });
   }).catch(function(err){
     alerta($('#mError'), 'La captura no ha subido: '+err.message);
   }).then(function(){
     $('#btnCaptura').disabled=false;
     $('#btnCaptura').textContent='Elegir una captura';
+    pintaOcupado(false);
   });
+}
+function pintaOcupado(si){
+  Array.prototype.forEach.call(document.querySelectorAll('.mini-et'), function(b){
+    b.classList.toggle('ocupado', !!si);
+  });
+}
+
+function desengancha(ref){
+  var e=ref && ref.lee();
+  if(!e) return;
+  if(e.foto) borraFoto(e.foto);
+  e.foto=''; e.mini='';
+  ref.graba();
 }
 
 function pintaPrevia(){
@@ -600,8 +661,12 @@ function borraFoto(clave){
 }
 
 /* ---------- El visor ---------- */
-function abreFoto(e){
+var refEnVisor=null;
+function abreFoto(e, ref){
   var v=$('#visor');
+  refEnVisor=ref||null;
+  $('#visorCambiar').hidden=!refEnVisor;
+  $('#visorQuitar').hidden=!refEnVisor;
   v.hidden=false;
   document.body.style.overflow='hidden';
   $('#visorQuien').textContent=e.usuario;
@@ -624,6 +689,7 @@ function cierraFoto(){
   $('#visor').hidden=true;
   document.body.style.overflow='';
   $('#visorLienzo').innerHTML='';
+  refEnVisor=null;
 }
 
 /* ============ El servidor ============ */
@@ -775,7 +841,9 @@ function pintaHistorico(){
               (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
               '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
             '</span>'+
-            (e.mini ? '<button class="mini-et" type="button" data-foto="'+esc(e.foto)+'" data-quien="'+esc(e.usuario)+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>' : '')+
+            (e.mini
+              ? '<button class="mini-et" type="button" data-ver="'+j+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>'
+              : '<button class="mini-et pon" type="button" data-pon="'+j+'" aria-label="Añadir una captura a '+esc(e.usuario)+'">+</button>')+
           '</li>';
         }).join('')+'</ul>'+
         '<div class="hueco"></div>'+
@@ -794,9 +862,13 @@ function pintaHistorico(){
       cab.setAttribute('aria-expanded', abre ? 'true' : 'false');
     });
     $('.devolver',li).addEventListener('click', function(){ devuelve(v); });
+    var iv=+li.getAttribute('data-i');
     Array.prototype.forEach.call(li.querySelectorAll('.mini-et'), function(b){
       b.addEventListener('click', function(){
-        abreFoto({usuario:b.getAttribute('data-quien'), foto:b.getAttribute('data-foto')});
+        var pon=b.getAttribute('data-pon');
+        if(pon!==null){ engancha(refVenta(iv, +pon)); return; }
+        var ie=+b.getAttribute('data-ver');
+        if(v.etiquetas[ie]) abreFoto(v.etiquetas[ie], refVenta(iv, ie));
       });
     });
   });
@@ -898,6 +970,8 @@ $('#ficheroFoto').addEventListener('change', function(){
 });
 $('#previaQuitar').addEventListener('click', olvidaFoto);
 $('#visorCerrar').addEventListener('click', cierraFoto);
+$('#visorCambiar').addEventListener('click', function(){ var r=refEnVisor; cierraFoto(); engancha(r); });
+$('#visorQuitar').addEventListener('click', function(){ var r=refEnVisor; cierraFoto(); desengancha(r); });
 $('#visor').addEventListener('click', function(e){ if(e.target===this) cierraFoto(); });
 
 if(codigo){

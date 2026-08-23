@@ -152,7 +152,8 @@ function montaApp(datosIniciales, opciones = {}) {
   const conFoto = servidor.datos.etiquetas.filter(e => e.usuario === 'con-captura')[0];
   comprueba('la etiqueta se queda con su captura', !!(conFoto && conFoto.foto), JSON.stringify(conFoto));
   comprueba('la previa se limpia para la siguiente', $('#previa').hidden === true);
-  comprueba('sale la miniatura en su fila', d.querySelectorAll('#colaWrap .mini-et').length === 1);
+  comprueba('sale la miniatura en su fila', d.querySelectorAll('#colaWrap .mini-et:not(.pon)').length === 1);
+  comprueba('las demás filas ofrecen ponerle una', d.querySelectorAll('#colaWrap .mini-et.pon').length === 11);
   comprueba('y solo en la suya', d.querySelectorAll('#colaWrap ul.cola > li').length === 12);
 
   // el orden del formulario y la hoja limpia
@@ -168,7 +169,7 @@ function montaApp(datosIniciales, opciones = {}) {
             d.querySelectorAll('#hoja .mini-et').length === 0);
 
   // tocar la etiqueta enseña la captura
-  d.querySelector('#colaWrap .mini-et').click();
+  d.querySelector('#colaWrap .mini-et:not(.pon)').click();
   comprueba('al tocarla se abre el visor', $('#visor').hidden === false);
   comprueba('con el usuario en la barra', $('#visorQuien').textContent === 'con-captura');
   await espera(40);
@@ -193,6 +194,50 @@ function montaApp(datosIniciales, opciones = {}) {
   await espera(700);
   const laClave = servidor.datos.etiquetas.filter(e => e.usuario === 'va-al-historico')[0].foto;
   comprueba('la captura está guardada', servidor.fotos.has(laClave));
+
+  // ================= enganchar una captura después =================
+  const sinFoto = [...d.querySelectorAll('#colaWrap ul.cola > li')]
+    .filter(li => li.querySelector('.mini-et.pon'))[0];
+  const quien = sinFoto.querySelector('.u').textContent;
+  const fotosAntes = servidor.fotos.size;
+  sinFoto.querySelector('.mini-et.pon').click();     // deja el destino apuntado
+  eligeUna({ d, w });
+  await espera(700);                                 // la subida se agrupa medio segundo
+  const yaConFoto = servidor.datos.etiquetas.filter(e => e.usuario === quien)[0];
+  comprueba('se le puede enganchar una captura después', !!(yaConFoto && yaConFoto.foto), JSON.stringify(yaConFoto));
+  comprueba('y sube al servidor', servidor.fotos.size === fotosAntes + 1);
+  comprueba('la fila cambia el hueco por la miniatura',
+            [...d.querySelectorAll('#colaWrap ul.cola > li')]
+              .filter(li => li.querySelector('.u').textContent === quien)[0]
+              .querySelector('.mini-et:not(.pon)') !== null);
+  comprueba('no toca la previa del formulario', $('#previa').hidden === true);
+
+  // cambiarla por otra: la vieja se va
+  const claveVieja = yaConFoto.foto;
+  [...d.querySelectorAll('#colaWrap ul.cola > li')]
+    .filter(li => li.querySelector('.u').textContent === quien)[0]
+    .querySelector('.mini-et:not(.pon)').click();
+  comprueba('el visor ofrece Cambiar y Quitar', $('#visorCambiar').hidden === false && $('#visorQuitar').hidden === false);
+  $('#visorCambiar').click();
+  eligeUna({ d, w });
+  await espera(700);
+  const cambiada = servidor.datos.etiquetas.filter(e => e.usuario === quien)[0];
+  comprueba('cambiar deja otra clave', cambiada.foto !== claveVieja, cambiada.foto);
+  comprueba('y borra la que sustituye', !servidor.fotos.has(claveVieja));
+
+  // quitarla del todo
+  [...d.querySelectorAll('#colaWrap ul.cola > li')]
+    .filter(li => li.querySelector('.u').textContent === quien)[0]
+    .querySelector('.mini-et:not(.pon)').click();
+  $('#visorQuitar').click();
+  await espera(700);
+  const desnuda = servidor.datos.etiquetas.filter(e => e.usuario === quien)[0];
+  comprueba('quitar la deja sin captura', !desnuda.foto && !desnuda.mini);
+  comprueba('y la borra del servidor', !servidor.fotos.has(cambiada.foto));
+  comprueba('la fila vuelve a ofrecer el hueco',
+            [...d.querySelectorAll('#colaWrap ul.cola > li')]
+              .filter(li => li.querySelector('.u').textContent === quien)[0]
+              .querySelector('.mini-et.pon') !== null);
 
   // ================= guardar selección NO archiva =================
   $('#btnGuardar').click();
@@ -230,7 +275,7 @@ function montaApp(datosIniciales, opciones = {}) {
   cab.click();
   comprueba('se despliega al tocarla', $('ul.hist .cuerpo').hidden === false);
   comprueba('enseña quién iba dentro', $('ul.hist .cuerpo').querySelectorAll('li').length === 12);
-  comprueba('con su miniatura en el histórico', $('ul.hist .cuerpo').querySelectorAll('.mini-et').length === 1);
+  comprueba('con su miniatura en el histórico', $('ul.hist .cuerpo').querySelectorAll('.mini-et:not(.pon)').length === 1);
 
   $('ul.hist .devolver').click();
   comprueba('devuelve las etiquetas a la cola', d.querySelectorAll('#colaWrap ul.cola > li').length === 12);

@@ -97,6 +97,8 @@ ul.cola li:first-child{border-top:0}
 .barra-c{width:5px;align-self:stretch;min-height:36px;border-radius:3px;background:var(--c);flex:0 0 auto}
 .n{font-size:12px;color:var(--tx2);width:22px;flex:0 0 auto;text-align:right}
 .datos{flex:1;min-width:0}
+/* Son spans: sin esto los tres datos se pegan en una sola línea. */
+.datos .u,.datos .a,.datos .t{display:block}
 .datos .u{font-family:"Space Mono",monospace;font-weight:700;font-size:15px;word-break:break-all;line-height:1.25}
 .datos .a{font-size:12.5px;color:var(--tx2);line-height:1.35;word-break:break-word}
 .datos .t{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--c);filter:brightness(1.25)}
@@ -734,8 +736,11 @@ $('#mUsuario').addEventListener('keydown', function(e){ if(e.key==='Enter') aña
 $('#mArticulo').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
 $('#btnSubir').addEventListener('click', function(){ $('#ficheros').click(); });
 $('#ficheros').addEventListener('change', function(){
-  var f=this.files; this.value='';
-  if(f && f.length) procesa(f);
+  // Copiar la lista ANTES de vaciar el input: al ponerle value='' se vacía
+  // también su FileList, que es el mismo objeto, y se quedaba sin ficheros.
+  var f=Array.prototype.slice.call(this.files||[]);
+  this.value='';
+  if(f.length) procesa(f);
 });
 $('#btnImprimir').addEventListener('click', function(){ window.print(); });
 $('#btnVaciar').addEventListener('click', vaciar);

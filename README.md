@@ -4,22 +4,32 @@ Etiquetas para los paquetes vendidos en Vinted: se apuntan las ventas, se
 imprimen diez por hoja A4 y se cortan. Pensado para el móvil.
 
 `index.html` es la aplicación entera: HTML, CSS y JS en el mismo archivo. No hay
-build, ni npm, ni framework. Lo único que se pide fuera son las tipografías de
-Google Fonts.
+build, ni npm, ni framework, ni API de pago, ni cuenta de nada. Lo único que se
+pide fuera son las tipografías de Google Fonts.
 
-## Las dos formas de añadir
+## Cómo se usa
 
-La pantalla principal tiene dos pestañas, y las dos van a la misma cola:
+Escribes el usuario de Vinted, el artículo (opcional) y eliges transportista.
+**Añadir a la hoja** y se suma a la cola. Cuando tengas las que quieras,
+**Imprimir A4**.
 
-- **Desde captura** — la principal. Eliges una o varias capturas de la
-  conversación de Vinted; se redimensionan a 1200px en el navegador y se mandan
-  a la API de Claude, que saca el usuario y el artículo. Antes de entrar en la
-  hoja pasan por una pantalla de revisión donde corriges lo que haya leído mal.
-  Si una captura falla, su tarjeta va vacía para rellenarla a mano.
-- **A mano** — para lo que no venga de una captura. Usuario, artículo opcional y
-  transportista.
+Se puede añadir con el teclado sin tocar el ratón: `Enter` en cualquiera de los
+dos campos añade la etiqueta y vuelve el cursor a «Usuario».
 
-La pestaña en la que estabas se recuerda al recargar.
+## No hace falta terminar de una sentada
+
+La cola se guarda sola en el navegador **en cuanto añades o quitas algo**. Puedes
+cerrar la pestaña, apagar el móvil o volver dos días después: al abrir la página
+sigue todo ahí, en el mismo orden, y sigues añadiendo donde lo dejaste.
+
+Un par de detalles que conviene saber:
+
+- Se guarda **por navegador y por dispositivo**. Lo que añadas en el móvil no
+  aparece en el ordenador; no hay servidor que lo sincronice.
+- **Imprimir no vacía la cola.** Si ya has impreso y no quieres volver a sacar
+  las mismas, dale a **Vaciar** (pide confirmación: hay que tocarlo dos veces).
+- Se pierde si borras los datos del sitio en el navegador, o si navegas de
+  incógnito.
 
 ## Probar en local
 
@@ -27,33 +37,20 @@ La pestaña en la que estabas se recuerda al recargar.
 python3 -m http.server 8000
 ```
 
-Y abrir `http://localhost:8000`. **No vale abrirlo con `file://`**: el origen es
-`null` y la llamada a la API de Claude se cae.
+Y abrir `http://localhost:8000`. Con `file://` también funciona —no hay ninguna
+llamada de red que dependa del origen— pero el servidor va igual de bien.
 
-## Publicar
+## Dónde se guarda
 
-```bash
-npx netlify-cli deploy --dir=. --prod
-```
-
-## La API key
-
-No está en el código y no debe estarlo. Se pide en **Ajustes** y se queda en el
-`localStorage` de ese navegador; si se entra desde otro móvil, hay que volver a
-ponerla. Se usa solo para leer las capturas con la API de Anthropic.
-
-## Cómo se guarda
-
-Todo vive en `localStorage`, no hay servidor ni base de datos:
+Una sola clave de `localStorage`, sin servidor ni base de datos:
 
 | Clave | Qué guarda |
 |---|---|
-| `vinted.etiquetas` | la cola de etiquetas |
-| `vinted.apikey` | la API key |
-| `vinted.modelo` | el modelo elegido |
-| `vinted.tab` | la pestaña en la que estabas |
+| `vinted.etiquetas` | la cola entera: usuario, artículo, transportista y orden |
 
-Vaciar los datos del sitio en el navegador se lo lleva todo por delante.
+Cada entrada lleva un `id` propio, para poder quitar una del medio sin descolocar
+las demás. Si el JSON guardado estuviera corrupto, `carga()` lo descarta y
+arranca con la cola vacía en vez de romperse.
 
 ## La hoja
 

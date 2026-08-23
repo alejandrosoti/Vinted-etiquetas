@@ -41,41 +41,11 @@ input,select{font:inherit}
 }
 .top h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
 .top h1 small{display:block;font-size:12px;font-weight:500;color:var(--tx2);letter-spacing:0}
-.icono{
-  background:var(--sup);border:1px solid var(--bor);color:var(--tx);
-  border-radius:var(--r2);padding:10px 12px;font-size:14px;font-weight:600;
-  display:inline-flex;align-items:center;gap:7px;
-}
-.icono:active{background:#2c322e}
 
 .card{background:var(--sup);border:1px solid var(--bor);border-radius:var(--r);padding:15px;margin-bottom:14px}
 .card > h2{margin:0 0 12px;font-size:13px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2)}
 .fila{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 
-/* ---------- Pestañas ---------- */
-.tabs{
-  display:grid;grid-template-columns:1fr 1fr;gap:6px;
-  background:var(--sup);border:1px solid var(--bor);border-radius:var(--r);
-  padding:6px;margin:0 0 14px;
-}
-.tab{
-  background:none;border:0;border-radius:var(--r2);padding:11px 8px;
-  font-size:14px;font-weight:600;color:var(--tx2);text-align:center;
-}
-.tab:active{background:#2c322e}
-.tab[aria-selected="true"]{background:var(--acc);color:var(--tx);font-weight:800}
-.tab[aria-selected="true"]:active{background:var(--acc)}
-.tp[hidden]{display:none}
-
-label.lab{display:block;font-size:12px;font-weight:600;color:var(--tx2);margin:0 0 6px}
-.campo{
-  width:100%;background:var(--bg);border:1px solid var(--bor);color:var(--tx);
-  border-radius:var(--r2);padding:12px 13px;font-size:16px;font-weight:500;
-}
-.campo::placeholder{color:#5f6762}
-.campo:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px rgba(11,110,110,.28)}
-.campo.mal{border-color:#E2001A}
-.hueco{height:12px}
 
 /* ---------- Transportistas ---------- */
 .trans{display:grid;grid-template-columns:1fr 1fr;gap:9px}
@@ -87,7 +57,6 @@ label.lab{display:block;font-size:12px;font-weight:600;color:var(--tx2);margin:0
 .trans button .punto{width:13px;height:13px;border-radius:50%;background:var(--c);flex:0 0 auto;border:1px solid rgba(255,255,255,.18)}
 .trans button[aria-pressed="true"]{background:var(--c);color:var(--t);border-color:var(--c);font-weight:800}
 .trans button[aria-pressed="true"] .punto{background:var(--t);opacity:.75;border-color:transparent}
-.trans.mini button{padding:9px 10px;font-size:13px;min-height:auto}
 
 /* ---------- Botones ---------- */
 .btn{
@@ -127,38 +96,11 @@ ul.cola li:first-child{border-top:0}
 .medidor-tx{font-size:13.5px;color:var(--tx2)}
 .medidor-tx b{color:var(--tx);font-weight:700}
 
-/* ---------- Subida ---------- */
-.subir{
-  display:flex;align-items:center;justify-content:center;gap:9px;
-  border:1px dashed #46504a;border-radius:var(--r2);padding:20px 14px;
-  background:var(--bg);font-weight:700;font-size:15px;width:100%;text-align:center;
-}
-.aviso{font-size:12.5px;color:var(--tx2);margin:10px 0 0;line-height:1.45}
-.progreso{margin:12px 0 0;font-size:14px;font-weight:600}
-.progreso .rail{height:5px;border-radius:3px;background:#313834;margin-top:8px;overflow:hidden}
-.progreso .rail i{display:block;height:100%;background:var(--acc);width:0;transition:width .25s}
+/* ---------- Avisos ---------- */
 .error{
   margin:11px 0 0;padding:11px 12px;border-radius:var(--r2);
   background:#3a1c1f;border:1px solid #6b2a2f;color:#f3c4c4;font-size:13.5px;line-height:1.45;
 }
-
-/* ---------- Paneles ---------- */
-.panel{
-  position:fixed;inset:0;background:var(--bg);z-index:40;overflow:auto;
-  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
-}
-.panel[hidden]{display:none}
-.panel .top{position:sticky;top:0;background:var(--bg);z-index:2;border-bottom:1px solid var(--bor);margin-bottom:14px}
-.rev{padding:0 0 12px}
-.rev .cab{display:flex;align-items:flex-start;gap:11px;margin-bottom:11px}
-.rev img{width:66px;height:100px;object-fit:cover;object-position:top;border-radius:8px;border:1px solid var(--bor);flex:0 0 auto;background:#000}
-.rev .cab .crece{flex:1;min-width:0}
-.pie{
-  position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 72%,rgba(27,31,29,0));
-  padding:14px 0 calc(16px + env(safe-area-inset-bottom));
-}
-.marca-mal{border-color:#E2001A}
-.chivato{font-size:12px;color:#e9a3a3;margin:8px 0 0}
 
 /* ---------- Hoja de impresión ----------
    Las filas van en minmax(0,1fr) y no en 1fr: 1fr es minmax(auto,1fr), así que
@@ -210,33 +152,8 @@ ul.cola li:first-child{border-top:0}
 <div class="wrap" id="app">
   <div class="top">
     <h1>Etiquetas Vinted<small id="sub">Aún no hay etiquetas</small></h1>
-    <button class="icono" id="btnAjustes" type="button">Ajustes</button>
   </div>
 
-  <div class="tabs" role="tablist" aria-label="Cómo añadir etiquetas">
-    <button class="tab" id="tabCaptura" type="button" role="tab" aria-selected="true" aria-controls="tpCaptura">Desde captura</button>
-    <button class="tab" id="tabManual" type="button" role="tab" aria-selected="false" aria-controls="tpManual">A mano</button>
-  </div>
-
-  <div class="tp" id="tpCaptura" role="tabpanel" aria-labelledby="tabCaptura">
-  <section class="card">
-    <h2>Subir capturas</h2>
-    <label class="lab">Transportista del lote</label>
-    <div class="trans mini" id="lTrans"></div>
-    <div id="lOtroWrap" hidden>
-      <div class="hueco"></div>
-      <input class="campo" id="lOtro" type="text" placeholder="Nombre del transportista">
-    </div>
-    <div class="hueco"></div>
-    <button class="subir" id="btnSubir" type="button">Elegir capturas</button>
-    <input id="ficheros" type="file" accept="image/*" multiple hidden>
-    <p class="aviso">Se leen una a una con Claude. Antes de entrar en la hoja pasan por revisión.</p>
-    <div class="progreso" id="prog" hidden><span id="progTx"></span><span class="rail"><i id="progBar"></i></span></div>
-    <p class="error" id="sError" hidden></p>
-  </section>
-  </div>
-
-  <div class="tp" id="tpManual" role="tabpanel" aria-labelledby="tabManual" hidden>
   <section class="card">
     <h2>Añadir a mano</h2>
     <label class="lab" for="mUsuario">Usuario de Vinted</label>
@@ -255,7 +172,6 @@ ul.cola li:first-child{border-top:0}
     <button class="btn pri ancho" id="btnAñadir" type="button">Añadir a la hoja</button>
     <p class="error" id="mError" hidden></p>
   </section>
-  </div>
 
   <section class="card">
     <h2>La hoja</h2>
@@ -273,46 +189,6 @@ ul.cola li:first-child{border-top:0}
   <button class="btn peli ancho" id="btnVaciar" type="button">Vaciar</button>
 </div>
 
-<div class="panel" id="panelRev" hidden>
-  <div class="wrap">
-    <div class="top">
-      <h1>Revisión<small id="revSub"></small></h1>
-      <button class="icono" id="revCerrar" type="button">Descartar</button>
-    </div>
-    <div id="revLista"></div>
-    <div class="pie">
-      <button class="btn pri ancho" id="revAñadir" type="button">Añadir todas</button>
-    </div>
-  </div>
-</div>
-
-<div class="panel" id="panelAj" hidden>
-  <div class="wrap">
-    <div class="top">
-      <h1>Ajustes<small>Se guardan solo en este dispositivo</small></h1>
-      <button class="icono" id="ajCerrar" type="button">Cerrar</button>
-    </div>
-    <section class="card">
-      <h2>API key de Anthropic</h2>
-      <input class="campo mono" id="ajKey" type="password" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Pega aquí tu API key">
-      <div class="hueco"></div>
-      <div class="fila">
-        <button class="btn chico" id="ajVer" type="button">Mostrar</button>
-        <button class="btn chico" id="ajBorrar" type="button">Borrar la key</button>
-      </div>
-      <p class="aviso">Se queda en <span class="mono">localStorage</span> de este navegador. No viaja a ningún sitio que no sea la API de Anthropic.</p>
-    </section>
-    <section class="card">
-      <h2>Modelo</h2>
-      <select class="campo" id="ajModelo">
-        <option value="claude-haiku-4-5-20251001">Haiku 4.5 · rápido y barato</option>
-        <option value="claude-sonnet-5">Sonnet 5 · lee mejor las capturas difíciles</option>
-      </select>
-    </section>
-    <button class="btn pri ancho" id="ajGuardar" type="button">Guardar</button>
-  </div>
-</div>
-
 <div id="hoja"></div>
 
 <script>
@@ -320,8 +196,8 @@ ul.cola li:first-child{border-top:0}
 'use strict';
 
 /* ============ Constantes ============ */
-var K_ET='vinted.etiquetas', K_KEY='vinted.apikey', K_MOD='vinted.modelo', K_TAB='vinted.tab';
-var POR_HOJA=10, LADO=1200, CALIDAD=0.85, MODELO_DEF='claude-haiku-4-5-20251001';
+var K_ET='vinted.etiquetas';
+var POR_HOJA=10;
 
 var TRANS={
   inpost:  {nombre:'InPost',        rotulo:'INPOST',        color:'#FFC400', texto:'#16191C'},
@@ -331,34 +207,8 @@ var TRANS={
 };
 var CLAVES=['inpost','mondial','vintedgo','otro'];
 
-var PROMPT='Esta es una captura de pantalla de la app Vinted.\n'+
-'Extrae dos cosas:\n'+
-'1. "usuario": el nombre de usuario de la persona con la que es la conversación. Aparece en la cabecera de la pantalla, arriba del todo.\n'+
-'2. "articulo": el título del artículo de la venta que se ve en la captura.\n\n'+
-'Responde SOLO con este JSON, sin markdown, sin explicaciones y sin ningún texto antes o después:\n'+
-'{"usuario": "...", "articulo": "..."}\n\n'+
-'Usa null en el campo que no puedas leer con seguridad. No inventes nada.';
-
-/* ============ Utilidades ============ */
-function $(s,r){ return (r||document).querySelector(s); }
-function esc(s){
-  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-  });
-}
-function dos(n){ return n<10 ? '0'+n : String(n); }
-function id(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
-function trans(t){ return TRANS[t] || TRANS.otro; }
-function rotulo(e){
-  if(e.transportista==='otro'){
-    var n=(e.otroNombre||'').trim();
-    return n ? n.toUpperCase() : 'OTRO';
-  }
-  return trans(e.transportista).rotulo;
-}
-
 /* ============ Estado ============ */
-var etiquetas=[], apikey='', modelo=MODELO_DEF, tabActiva='captura';
+var etiquetas=[];
 
 function carga(){
   try{
@@ -376,28 +226,10 @@ function carga(){
         };
       });
   }catch(err){ etiquetas=[]; }
-  try{ apikey=localStorage.getItem(K_KEY) || ''; }catch(err){ apikey=''; }
-  try{ modelo=localStorage.getItem(K_MOD) || MODELO_DEF; }catch(err){ modelo=MODELO_DEF; }
-  try{ tabActiva=localStorage.getItem(K_TAB)==='manual' ? 'manual' : 'captura'; }catch(err){ tabActiva='captura'; }
 }
 function guarda(){
   try{ localStorage.setItem(K_ET, JSON.stringify(etiquetas)); }
-  catch(err){ alerta(tabActiva==='manual' ? $('#mError') : $('#sError'),'No se ha podido guardar en este navegador.'); }
-}
-
-/* ============ Pestañas ============ */
-function pintaTabs(){
-  var cap = tabActiva!=='manual';
-  $('#tabCaptura').setAttribute('aria-selected', cap ? 'true' : 'false');
-  $('#tabManual').setAttribute('aria-selected', cap ? 'false' : 'true');
-  $('#tpCaptura').hidden = !cap;
-  $('#tpManual').hidden = cap;
-}
-function vasA(t){
-  tabActiva = t==='manual' ? 'manual' : 'captura';
-  try{ localStorage.setItem(K_TAB, tabActiva); }catch(err){}
-  pintaTabs();
-  if(tabActiva==='manual') $('#mUsuario').focus();
+  catch(err){ alerta($('#mError'),'No se ha podido guardar en este navegador.'); }
 }
 
 /* ============ Selectores de transportista ============ */
@@ -534,286 +366,16 @@ function desarma(){
   b.classList.remove('armado'); b.textContent='Vaciar';
 }
 
-/* ============ Imagen: redimensionar ============ */
-function aJpeg(fichero){
-  return new Promise(function(ok, mal){
-    var url=URL.createObjectURL(fichero);
-    var img=new Image();
-    img.onload=function(){
-      try{
-        var w=img.naturalWidth, h=img.naturalHeight;
-        var f=Math.min(1, LADO/Math.max(w,h));
-        var cv=document.createElement('canvas');
-        cv.width=Math.max(1,Math.round(w*f));
-        cv.height=Math.max(1,Math.round(h*f));
-        var cx=cv.getContext('2d');
-        cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height);
-        cx.drawImage(img,0,0,cv.width,cv.height);
-        var url2=cv.toDataURL('image/jpeg', CALIDAD);
-        URL.revokeObjectURL(url);
-        ok({dataUrl:url2, base64:url2.slice(url2.indexOf(',')+1)});
-      }catch(err){ URL.revokeObjectURL(url); mal(err); }
-    };
-    img.onerror=function(){ URL.revokeObjectURL(url); mal(new Error('No se ha podido abrir la imagen.')); };
-    img.src=url;
-  });
-}
-
-/* ============ Llamada a la API ============ */
-function limpiaJson(txt){
-  var t=String(txt||'').trim();
-  t=t.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
-  var a=t.indexOf('{'), b=t.lastIndexOf('}');
-  if(a>=0 && b>a) t=t.slice(a,b+1);
-  return t;
-}
-function lee(base64){
-  return fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{
-      'x-api-key': apikey,
-      'anthropic-version':'2023-06-01',
-      'content-type':'application/json',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body: JSON.stringify({
-      model: modelo,
-      max_tokens: 300,
-      messages:[{role:'user', content:[
-        {type:'image', source:{type:'base64', media_type:'image/jpeg', data: base64}},
-        {type:'text', text: PROMPT}
-      ]}]
-    })
-  }).then(function(r){
-    if(r.status===401) throw new Error('La API key no es válida, revísala en Ajustes');
-    if(r.status===429) throw new Error('La API ha pedido esperar (429). Inténtalo en un momento.');
-    if(!r.ok){
-      return r.text().then(function(t){
-        var m='';
-        try{ m=(JSON.parse(t).error||{}).message||''; }catch(e){ m=''; }
-        throw new Error('Error '+r.status+(m?': '+m:''));
-      });
-    }
-    return r.json();
-  }).then(function(d){
-    var txt=(d.content||[]).filter(function(b){ return b.type==='text'; })
-      .map(function(b){ return b.text; }).join('');
-    try{
-      var j=JSON.parse(limpiaJson(txt));
-      return {
-        usuario: j && j.usuario ? String(j.usuario).trim() : '',
-        articulo: j && j.articulo ? String(j.articulo).trim() : ''
-      };
-    }catch(err){
-      return {usuario:'', articulo:'', nota:'No se ha entendido la respuesta, rellénalo a mano'};
-    }
-  });
-}
-
-/* ============ Revisión ============ */
-var lSel='inpost', revisando=[];
-function pintaLote(){
-  pintaTrans($('#lTrans'), lSel, function(t){ lSel=t; pintaLote(); });
-  $('#lOtroWrap').hidden = lSel!=='otro';
-}
-
-function procesa(ficheros){
-  if(!apikey){
-    abreAjustes();
-    alerta($('#sError'),'');
-    setTimeout(function(){ $('#ajKey').focus(); }, 60);
-    return;
-  }
-  alerta($('#sError'),'');
-  var lista=Array.prototype.slice.call(ficheros).filter(function(f){ return /^image\//.test(f.type); });
-  if(!lista.length){ alerta($('#sError'),'No había ninguna imagen entre lo elegido.'); return; }
-
-  var otro = lSel==='otro' ? $('#lOtro').value.trim() : '';
-  var prog=$('#prog'), tx=$('#progTx'), bar=$('#progBar');
-  prog.hidden=false; $('#btnSubir').disabled=true;
-  var salida=[], fallos=0;
-
-  function paso(i){
-    if(i>=lista.length){
-      prog.hidden=true; $('#btnSubir').disabled=false;
-      bar.style.width='0%';
-      if(fallos) alerta($('#sError'), fallos===1
-        ? 'Una captura no se ha podido leer; su tarjeta va vacía para rellenarla a mano.'
-        : fallos+' capturas no se han podido leer; sus tarjetas van vacías para rellenarlas a mano.');
-      revisando=salida;
-      abreRevision();
-      return;
-    }
-    tx.textContent='Leyendo '+(i+1)+' de '+lista.length;
-    bar.style.width=Math.round(i/lista.length*100)+'%';
-
-    aJpeg(lista[i]).then(function(img){
-      return lee(img.base64).then(function(r){
-        salida.push({id:id(), usuario:r.usuario||'', articulo:r.articulo||'',
-                     transportista:lSel, otroNombre:otro, miniatura:img.dataUrl, nota:r.nota||''});
-      }).catch(function(err){
-        fallos++;
-        if(/API key/.test(err.message)) alerta($('#sError'), err.message);
-        salida.push({id:id(), usuario:'', articulo:'', transportista:lSel,
-                     otroNombre:otro, miniatura:img.dataUrl, nota:err.message});
-      });
-    }).catch(function(err){
-      fallos++;
-      salida.push({id:id(), usuario:'', articulo:'', transportista:lSel,
-                   otroNombre:otro, miniatura:'', nota:err.message||'No se ha podido leer la imagen'});
-    }).then(function(){ paso(i+1); });
-  }
-  paso(0);
-}
-
-function abreRevision(){
-  $('#panelRev').hidden=false;
-  document.body.style.overflow='hidden';
-  pintaRevision();
-}
-function cierraRevision(){
-  $('#panelRev').hidden=true;
-  document.body.style.overflow='';
-  revisando=[];
-}
-function pintaRevision(){
-  $('#revSub').textContent = revisando.length===1 ? '1 captura leída' : revisando.length+' capturas leídas';
-  var cont=$('#revLista');
-  if(!revisando.length){ cierraRevision(); return; }
-  cont.innerHTML = revisando.map(function(r,i){
-    return '<section class="card rev" data-i="'+i+'">'+
-      '<div class="cab">'+
-        (r.miniatura ? '<img src="'+esc(r.miniatura)+'" alt="">' : '')+
-        '<div class="crece">'+
-          '<label class="lab">Usuario de Vinted</label>'+
-          '<input class="campo mono r-u'+(r.usuario?'':' marca-mal')+'" type="text" '+
-            'autocapitalize="none" autocorrect="off" spellcheck="false" '+
-            'value="'+esc(r.usuario)+'" placeholder="Sin leer, escríbelo">'+
-          '<div class="hueco"></div>'+
-          '<label class="lab">Artículo</label>'+
-          '<input class="campo r-a" type="text" value="'+esc(r.articulo)+'" placeholder="Opcional">'+
-        '</div>'+
-      '</div>'+
-      (r.nota ? '<p class="chivato">'+esc(r.nota)+'</p>' : '')+
-      '<div class="hueco"></div>'+
-      '<div class="trans mini r-t"></div>'+
-      '<div class="r-otro" '+(r.transportista==='otro'?'':'hidden')+'>'+
-        '<div class="hueco"></div>'+
-        '<input class="campo r-on" type="text" value="'+esc(r.otroNombre)+'" placeholder="Nombre del transportista">'+
-      '</div>'+
-      '<div class="hueco"></div>'+
-      '<button class="btn chico r-x" type="button">Quitar esta</button>'+
-    '</section>';
-  }).join('');
-
-  Array.prototype.forEach.call(cont.querySelectorAll('.rev'), function(sec){
-    var i=+sec.getAttribute('data-i'), r=revisando[i];
-    $('.r-u',sec).addEventListener('input', function(){
-      r.usuario=this.value; this.classList.toggle('marca-mal', !this.value.trim());
-    });
-    $('.r-a',sec).addEventListener('input', function(){ r.articulo=this.value; });
-    var on=$('.r-on',sec);
-    if(on) on.addEventListener('input', function(){ r.otroNombre=this.value; });
-    pintaRevisionParcial(sec, r);
-    $('.r-x',sec).addEventListener('click', function(){
-      revisando.splice(i,1); pintaRevision();
-    });
-  });
-}
-function pintaRevisionParcial(sec, r){
-  pintaTrans($('.r-t',sec), r.transportista, function(t){
-    r.transportista=t; pintaRevisionParcial(sec, r);
-  });
-  $('.r-otro',sec).hidden = r.transportista!=='otro';
-}
-
-function añadeTodas(){
-  var listas=revisando.filter(function(r){ return (r.usuario||'').trim(); });
-  var faltan=revisando.filter(function(r){ return !(r.usuario||'').trim(); });
-  listas.forEach(function(r){
-    etiquetas.push({
-      id:id(), usuario:r.usuario.trim(), articulo:(r.articulo||'').trim(),
-      transportista:r.transportista,
-      otroNombre: r.transportista==='otro' ? (r.otroNombre||'').trim() : ''
-    });
-  });
-  guarda(); render();
-  if(faltan.length){
-    revisando=faltan;
-    faltan.forEach(function(r){ r.nota='Falta el usuario: sin él no puede entrar en la hoja'; });
-    pintaRevision();
-    return;
-  }
-  cierraRevision();
-}
-
-/* ============ Ajustes ============ */
-function abreAjustes(){
-  $('#ajKey').value=apikey;
-  $('#ajKey').type='password';
-  $('#ajVer').textContent='Mostrar';
-  $('#ajModelo').value=modelo;
-  if(!$('#ajModelo').value) $('#ajModelo').value=MODELO_DEF;
-  $('#panelAj').hidden=false;
-  document.body.style.overflow='hidden';
-}
-function cierraAjustes(){
-  $('#panelAj').hidden=true;
-  document.body.style.overflow='';
-}
-function guardaAjustes(){
-  apikey=$('#ajKey').value.trim();
-  modelo=$('#ajModelo').value || MODELO_DEF;
-  try{
-    if(apikey) localStorage.setItem(K_KEY, apikey); else localStorage.removeItem(K_KEY);
-    localStorage.setItem(K_MOD, modelo);
-  }catch(err){}
-  cierraAjustes();
-}
-
 /* ============ Arranque ============ */
 carga();
-pintaTabs();
 pintaManual();
-pintaLote();
 render();
 
-$('#tabCaptura').addEventListener('click', function(){ vasA('captura'); });
-$('#tabManual').addEventListener('click', function(){ vasA('manual'); });
 $('#btnAñadir').addEventListener('click', añadeManual);
 $('#mUsuario').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
 $('#mArticulo').addEventListener('keydown', function(e){ if(e.key==='Enter') añadeManual(); });
-$('#btnSubir').addEventListener('click', function(){ $('#ficheros').click(); });
-$('#ficheros').addEventListener('change', function(){
-  // Copiar la lista ANTES de vaciar el input: al ponerle value='' se vacía
-  // también su FileList, que es el mismo objeto, y se quedaba sin ficheros.
-  var f=Array.prototype.slice.call(this.files||[]);
-  this.value='';
-  if(f.length) procesa(f);
-});
 $('#btnImprimir').addEventListener('click', function(){ window.print(); });
 $('#btnVaciar').addEventListener('click', vaciar);
-$('#btnAjustes').addEventListener('click', abreAjustes);
-$('#ajCerrar').addEventListener('click', cierraAjustes);
-$('#ajGuardar').addEventListener('click', guardaAjustes);
-$('#ajVer').addEventListener('click', function(){
-  var c=$('#ajKey'); var oculto=c.type==='password';
-  c.type = oculto ? 'text' : 'password';
-  this.textContent = oculto ? 'Ocultar' : 'Mostrar';
-});
-$('#ajBorrar').addEventListener('click', function(){
-  $('#ajKey').value='';
-  apikey='';
-  try{ localStorage.removeItem(K_KEY); }catch(err){}
-});
-$('#revCerrar').addEventListener('click', cierraRevision);
-$('#revAñadir').addEventListener('click', añadeTodas);
-document.addEventListener('keydown', function(e){
-  if(e.key!=='Escape') return;
-  if(!$('#panelRev').hidden) cierraRevision();
-  else if(!$('#panelAj').hidden) cierraAjustes();
-});
-
 })();
 </script>
 </body>

@@ -42,8 +42,9 @@ Vaciar los datos del sitio en el navegador se lo lleva todo por delante.
 
 ## La hoja
 
-Ocho etiquetas por hoja A4, dos columnas por cuatro filas, de unos 95×68mm. A
-partir de la novena se añade otra hoja. Cada etiqueta lleva arriba una banda del
+Veinte etiquetas por hoja A4, cuatro columnas por cinco filas, de 45,5×53mm. A
+partir de la veintiuna se añade otra hoja. El número por hoja es la constante
+`POR_HOJA` del script; el tamaño sale solo de la rejilla de `.pagina`. Cada etiqueta lleva arriba una banda del
 color de su transportista, que es lo que se mira en el punto de recogida sin
 leer nada: InPost amarillo, Mondial Relay rojo, Vinted Go verde azulado.
 

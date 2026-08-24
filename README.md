@@ -93,7 +93,8 @@ gastaría tinta. Hay dos comprobaciones en la prueba que lo fijan.
 La captura vive mientras alguien la mencione. Al quitar una etiqueta de la cola
 su imagen se borra, salvo que una venta guardada siga apuntando a ella. De eso
 se encarga un barrido en el servidor en cada guardado: lo que no menciona nadie,
-se va.
+se va. «Nadie» son las etiquetas de la cola, las de las ventas guardadas y la
+imagen de envío de cada venta.
 
 ## Ventas guardadas
 
@@ -115,6 +116,21 @@ es una selección en curso, que se guarda sola pero no es historia todavía.
 haya ahora, con identificadores nuevos. Sirve para reimprimir una venta o para
 corregir un usuario mal escrito: la devuelves, la arreglas y vuelves a imprimir.
 La venta archivada no se toca: es una copia, no una referencia.
+
+### Enviado
+
+Dentro de cada venta hay un **Marcar como enviado**: un toque y queda con el día
+y la hora en que lo hiciste, y la palabra **Enviado** se ve ya en la fila sin
+tener que abrirla. Otro toque lo deshace.
+
+Al lado hay un hueco para **la imagen del envío** — el resguardo del punto de
+recogida, la foto de los paquetes en el mostrador, lo que te sirva. Es opcional:
+puedes marcar la venta como enviada sin ninguna imagen. Si la adjuntas, la venta
+se da por enviada sola, porque nadie guarda el papel de algo que no ha llevado.
+Se toca para verla a pantalla completa, cambiarla o quitarla; quitarla no la
+desmarca, que enviada ya está.
+
+Es **una por venta**, no por etiqueta: cada etiqueta ya tiene su propia captura.
 
 **Eliminar venta** la borra del histórico, en dos toques: el primero pregunta y
 el segundo borra. No hay vuelta atrás — se van también sus capturas, que el

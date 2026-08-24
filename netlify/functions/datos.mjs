@@ -86,8 +86,12 @@ async function capturas(req, clave) {
 async function barreCapturas(datos) {
   const vivas = new Set();
   for (const e of datos.etiquetas) if (e && e.foto) vivas.add(e.foto);
-  for (const v of datos.historico)
+  for (const v of datos.historico) {
+    // La venta tiene su propia imagen, la del envío. Sin esta línea el barrido
+    // la daría por huérfana y la borraría en el primer guardado.
+    if (v && v.foto) vivas.add(v.foto);
     for (const e of (v.etiquetas || [])) if (e && e.foto) vivas.add(e.foto);
+  }
 
   const almacen = getStore({ name: 'vinted-fotos', consistency: 'strong' });
   const { blobs } = await almacen.list();

@@ -74,8 +74,10 @@ function montaApp(datosIniciales, opciones = {}) {
         // El barrido de capturas huérfanas, igual que en la función de verdad.
         const vivas = new Set();
         for (const e of servidor.datos.etiquetas) if (e && e.foto) vivas.add(e.foto);
-        for (const v of servidor.datos.historico)
+        for (const v of servidor.datos.historico) {
+          if (v && v.foto) vivas.add(v.foto);
           for (const e of (v.etiquetas || [])) if (e && e.foto) vivas.add(e.foto);
+        }
         for (const k of [...servidor.fotos.keys()]) if (!vivas.has(k)) servidor.fotos.delete(k);
         return resp({ ok: true }, 200);
       };
@@ -448,6 +450,62 @@ function montaApp(datosIniciales, opciones = {}) {
   await espera(700);
   comprueba('el servidor se entera', borra.servidor.datos.historico.length === 1, borra.servidor.datos.historico.length);
   comprueba('y la cola no se toca', borra.servidor.datos.etiquetas.length === 0);
+
+  // ================= enviado, con resguardo o sin él =================
+  const env = montaApp({ etiquetas: [], historico: [
+    { id: 'v1', nombre: 'Venta 01/01/2026 10:00', cuando: 1,
+      etiquetas: [{ id: 'a', usuario: 'uno', transportista: 'inpost' }] }
+  ] }, { codigoGuardado: 'abrete-sesamo' });
+  await espera(60);
+  const ed = env.d, e$ = s => ed.querySelector(s);
+  e$('ul.hist .cab').click();
+  comprueba('la venta empieza sin enviar', e$('ul.hist .marca').getAttribute('aria-pressed') === 'false');
+  comprueba('y sin marca en la cabecera', !e$('ul.hist .env'));
+
+  e$('ul.hist .marca').click();
+  comprueba('un toque la da por enviada', e$('ul.hist .marca').getAttribute('aria-pressed') === 'true');
+  comprueba('con el día y la hora', /Enviado · \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/.test(e$('ul.hist .marca').textContent),
+            e$('ul.hist .marca').textContent);
+  comprueba('se ve también con la venta plegada', !!e$('ul.hist .env'));
+  comprueba('y sin cerrarle el panel en la cara', e$('ul.hist .cuerpo').hidden === false);
+  await espera(700);
+  comprueba('el servidor se queda con la fecha', !!env.servidor.datos.historico[0].enviado);
+
+  e$('ul.hist .marca').click();
+  comprueba('otro toque lo deshace', e$('ul.hist .marca').getAttribute('aria-pressed') === 'false');
+  comprueba('y retira la marca de la cabecera', !e$('ul.hist .env'));
+  await espera(700);
+  comprueba('en el servidor también', !env.servidor.datos.historico[0].enviado);
+
+  // La imagen es opcional: hasta aquí se ha marcado y desmarcado sin ninguna.
+  comprueba('se puede marcar sin imagen ninguna', !env.servidor.datos.historico[0].foto);
+
+  e$('ul.hist .mini-et.justi').click();
+  eligeUna({ d: ed, w: env.w }, 'resguardo.jpg');
+  await espera(700);
+  const resguardo = env.servidor.datos.historico[0].foto;
+  comprueba('la imagen del envío se guarda en la venta', !!resguardo, JSON.stringify(resguardo));
+  comprueba('y sube al servidor', env.servidor.fotos.has(resguardo));
+  comprueba('adjuntarla la da por enviada', !!env.servidor.datos.historico[0].enviado);
+  comprueba('la miniatura sale en la venta', !!e$('ul.hist .mini-et.justi img'));
+  comprueba('sin colarse en las etiquetas',
+            ed.querySelectorAll('ul.hist .cola .mini-et:not(.pon)').length === 0);
+
+  // Lo que de verdad se rompería: el barrido del servidor no la conoce y se la
+  // lleva por delante en el siguiente guardado.
+  e$('ul.hist .devolver').click();
+  await espera(700);
+  comprueba('el barrido NO se lleva la imagen del envío', env.servidor.fotos.has(resguardo));
+
+  e$('ul.hist .mini-et.justi').click();
+  comprueba('al tocarla se abre el visor', e$('#visor').hidden === false);
+  comprueba('con el nombre de la venta', e$('#visorQuien').textContent === 'Venta 01/01/2026 10:00',
+            e$('#visorQuien').textContent);
+  e$('#visorQuitar').click();
+  await espera(700);
+  comprueba('quitarla deja la venta sin imagen', !env.servidor.datos.historico[0].foto);
+  comprueba('y la borra del servidor', !env.servidor.fotos.has(resguardo));
+  comprueba('pero enviada se queda', !!env.servidor.datos.historico[0].enviado);
 
   console.log('');
   console.log(fallos === 0 ? `TODO EN VERDE — ${ok} comprobaciones` : `${fallos} FALLOS de ${ok + fallos}`);

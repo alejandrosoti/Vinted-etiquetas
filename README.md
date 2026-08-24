@@ -93,8 +93,9 @@ gastaría tinta. Hay dos comprobaciones en la prueba que lo fijan.
 La captura vive mientras alguien la mencione. Al quitar una etiqueta de la cola
 su imagen se borra, salvo que una venta guardada siga apuntando a ella. De eso
 se encarga un barrido en el servidor en cada guardado: lo que no menciona nadie,
-se va. «Nadie» son las etiquetas de la cola, las de las ventas guardadas y la
-imagen de envío de cada venta.
+se va. «Nadie» son las etiquetas de la cola y las de las ventas guardadas,
+contando las **dos** imágenes que puede llevar cada una: la captura y la foto
+del envío.
 
 ## Ventas guardadas
 
@@ -119,18 +120,21 @@ La venta archivada no se toca: es una copia, no una referencia.
 
 ### Enviado
 
-Dentro de cada venta hay un **Marcar como enviado**: un toque y queda con el día
-y la hora en que lo hiciste, y la palabra **Enviado** se ve ya en la fila sin
-tener que abrirla. Otro toque lo deshace.
+Dentro de cada venta, **cada etiqueta lleva su propia línea de envío**, debajo de
+sus datos: un **Marcar como enviado** y un hueco para la foto del envío.
 
-Al lado hay un hueco para **la imagen del envío** — el resguardo del punto de
-recogida, la foto de los paquetes en el mostrador, lo que te sirva. Es opcional:
-puedes marcar la venta como enviada sin ninguna imagen. Si la adjuntas, la venta
-se da por enviada sola, porque nadie guarda el papel de algo que no ha llevado.
-Se toca para verla a pantalla completa, cambiarla o quitarla; quitarla no la
-desmarca, que enviada ya está.
+- Un toque en la marca y esa etiqueta queda con el día y la hora en que la
+  llevaste. Otro toque lo deshace. Van una a una, que los paquetes no siempre
+  salen el mismo día.
+- El hueco de al lado es para **la foto del envío**: el resguardo del punto de
+  recogida, el paquete en el mostrador, lo que te sirva. Es opcional — puedes
+  marcar una etiqueta como enviada sin ninguna foto. Si la adjuntas, la etiqueta
+  se da por enviada sola. Quitarla no la desmarca, que enviada ya está.
+- Es **la segunda imagen** de la etiqueta: la captura de arriba sigue siendo la
+  de la conversación o el QR, y no se pisan.
 
-Es **una por venta**, no por etiqueta: cada etiqueta ya tiene su propia captura.
+Sin abrir la venta se ve por dónde va: **3/12** mientras queden, y **ENVIADO**
+cuando estén todas.
 
 **Eliminar venta** la borra del histórico, en dos toques: el primero pregunta y
 el segundo borra. No hay vuelta atrás — se van también sus capturas, que el

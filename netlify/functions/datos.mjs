@@ -85,12 +85,13 @@ async function capturas(req, clave) {
    dejaría su imagen ocupando sitio para siempre y sin forma de llegar a ella. */
 async function barreCapturas(datos) {
   const vivas = new Set();
-  for (const e of datos.etiquetas) if (e && e.foto) vivas.add(e.foto);
+  // Cada etiqueta puede tener dos imágenes: la captura de la conversación y la
+  // foto del envío. Las dos cuentan; a la que se olvide aquí, el barrido se la
+  // lleva por delante en el primer guardado.
+  for (const e of datos.etiquetas) vivas_de(e, vivas);
   for (const v of datos.historico) {
-    // La venta tiene su propia imagen, la del envío. Sin esta línea el barrido
-    // la daría por huérfana y la borraría en el primer guardado.
-    if (v && v.foto) vivas.add(v.foto);
-    for (const e of (v.etiquetas || [])) if (e && e.foto) vivas.add(e.foto);
+    if (v && v.foto) vivas.add(v.foto);   // de cuando el envío era de la venta entera
+    for (const e of (v.etiquetas || [])) vivas_de(e, vivas);
   }
 
   const almacen = getStore({ name: 'vinted-fotos', consistency: 'strong' });
@@ -98,6 +99,12 @@ async function barreCapturas(datos) {
   const sobran = blobs.filter(b => !vivas.has(b.key));
   await Promise.all(sobran.map(b => almacen.delete(b.key)));
   return sobran.length;
+}
+
+function vivas_de(e, vivas) {
+  if (!e) return;
+  if (e.foto) vivas.add(e.foto);
+  if (e.envioFoto) vivas.add(e.envioFoto);
 }
 
 /* Se guarda lo que llega, pero solo con la forma esperada: si un día el cliente

@@ -122,12 +122,17 @@ ul.hist li:first-child{border-top:0}
 .hist .cuerpo{padding:0 0 14px}
 .hist .cuerpo[hidden]{display:none}
 
-/* ---------- Enviado ---------- */
-.envio{display:flex;align-items:center;gap:10px;margin:0 0 13px}
+/* ---------- Enviado ----------
+   En el histórico cada etiqueta va en dos líneas: la de siempre y, debajo,
+   la del envío. Sangrada hasta donde empieza el usuario, para que se lea como
+   algo de esa etiqueta y no como algo suelto entre dos filas. */
+.hist .cola li{display:block;padding:12px 0}
+.hist .cola .fila-et{display:flex;align-items:center;gap:11px}
+.envio{display:flex;align-items:center;gap:9px;margin:9px 0 0 38px}
 .marca{
   flex:1;min-width:0;display:flex;align-items:center;gap:9px;text-align:left;
   background:var(--bg);border:1px solid var(--bor);border-radius:var(--r2);
-  padding:11px 13px;font-size:13.5px;font-weight:700;color:var(--tx2);
+  padding:10px 12px;font-size:12.5px;font-weight:700;color:var(--tx2);
 }
 .marca .tic{
   width:19px;height:19px;border-radius:50%;border:1px solid #4a544e;flex:0 0 auto;
@@ -395,28 +400,41 @@ function normalizaEtiquetas(lista){
         articulo: e.articulo ? String(e.articulo) : '',
         transportista: TRANS[e.transportista] ? e.transportista : 'otro',
         otroNombre: e.otroNombre ? String(e.otroNombre) : '',
-        foto: /^[a-z0-9]{4,40}$/.test(e.foto) ? e.foto : '',
-        mini: (typeof e.mini==='string' && e.mini.slice(0,23)==='data:image/jpeg;base64,'
-               && e.mini.length<=TOPE_MINI) ? e.mini : ''
+        foto: clave(e.foto),
+        mini: miniatura(e.mini),
+        // Lo del envío: la fecha en que se llevó y la foto del resguardo. Solo
+        // se usan en el histórico, pero se validan aquí como todo lo demás.
+        enviado: Number(e.enviado) || 0,
+        envioFoto: clave(e.envioFoto),
+        envioMini: miniatura(e.envioMini)
       };
     });
+}
+function clave(c){ return /^[a-z0-9]{4,40}$/.test(c) ? c : ''; }
+function miniatura(m){
+  return (typeof m==='string' && m.slice(0,23)==='data:image/jpeg;base64,'
+          && m.length<=TOPE_MINI) ? m : '';
 }
 function normalizaHistorico(lista){
   if(!Array.isArray(lista)) return [];
   return lista.filter(function(v){ return v && typeof v==='object' && Array.isArray(v.etiquetas); })
     .map(function(v){
-      return {
+      var venta={
         id: v.id || id(),
         nombre: String(v.nombre || 'Venta sin nombre'),
         cuando: Number(v.cuando) || 0,
-        enviado: Number(v.enviado) || 0,
-        // La imagen del envío se guarda en la venta con los mismos nombres que
-        // usan las etiquetas, y así le vale el mecanismo de capturas entero.
-        foto: /^[a-z0-9]{4,40}$/.test(v.foto) ? v.foto : '',
-        mini: (typeof v.mini==='string' && v.mini.slice(0,23)==='data:image/jpeg;base64,'
-               && v.mini.length<=TOPE_MINI) ? v.mini : '',
         etiquetas: normalizaEtiquetas(v.etiquetas)
       };
+      /* Puente desde la versión en que «enviado» y la foto eran de la venta
+         entera. Se reparten entre sus etiquetas para no perder lo que se hubiera
+         marcado con aquello; cuando no quede nada así, esto se puede quitar. */
+      if(Number(v.enviado) && !venta.etiquetas.some(function(e){ return e.enviado; }))
+        venta.etiquetas.forEach(function(e){ e.enviado=Number(v.enviado); });
+      if(venta.etiquetas[0] && clave(v.foto) && !venta.etiquetas[0].envioFoto){
+        venta.etiquetas[0].envioFoto=clave(v.foto);
+        venta.etiquetas[0].envioMini=miniatura(v.mini);
+      }
+      return venta;
     });
 }
 
@@ -654,16 +672,18 @@ function refVenta(iv, ie){
     graba: function(){ guardaHist(); pintaHistorico(); }
   };
 }
-/* La imagen del envío cuelga de la venta, no de una etiqueta suya: es una por
-   tanda, la del resguardo de haberla llevado. */
-function refJusti(iv){
+/* La foto del envío es un segundo hueco en la misma etiqueta: la captura sigue
+   siendo la de la conversación. Por eso la referencia dice en qué par de campos
+   vive, y el mecanismo de capturas le vale igual. */
+function refEnvio(iv, ie){
   return {
-    lee: function(){ return historico[iv]; },
+    lee: function(){ return historico[iv] && historico[iv].etiquetas[ie]; },
+    campo:'envioFoto', campoMini:'envioMini',
     graba: function(){
-      var v=historico[iv];
-      // Guardar el resguardo es dar por enviada la venta: nadie guarda el
-      // papel de algo que no ha llevado. Quitarlo no la desmarca, que ya se fue.
-      if(v && v.foto && !v.enviado) v.enviado=Date.now();
+      var e=historico[iv] && historico[iv].etiquetas[ie];
+      // Guardar el resguardo es darla por enviada: nadie guarda el papel de algo
+      // que no ha llevado. Quitarlo no la desmarca, que ya se fue.
+      if(e && e.envioFoto && !e.enviado) e.enviado=Date.now();
       guardaHist(); pintaHistorico();
     }
   };
@@ -730,8 +750,9 @@ function eligeFoto(fichero){
       }
       var e=ref.lee();
       if(!e){ borraFoto(clave); return; }        // la quitaron mientras subía
-      if(e.foto && e.foto!==clave) borraFoto(e.foto);
-      e.foto=clave; e.mini=r.mini;
+      var cf=ref.campo||'foto', cm=ref.campoMini||'mini';
+      if(e[cf] && e[cf]!==clave) borraFoto(e[cf]);
+      e[cf]=clave; e[cm]=r.mini;
       ref.graba();
     });
   }).catch(function(err){
@@ -751,8 +772,9 @@ function pintaOcupado(si){
 function desengancha(ref){
   var e=ref && ref.lee();
   if(!e) return;
-  if(e.foto) borraFoto(e.foto);
-  e.foto=''; e.mini='';
+  var cf=ref.campo||'foto', cm=ref.campoMini||'mini';
+  if(e[cf]) borraFoto(e[cf]);
+  e[cf]=''; e[cm]='';
   ref.graba();
 }
 
@@ -931,10 +953,10 @@ function archiva(){
   if(!etiquetas.length) return null;
   var v={
     id:id(), nombre:'Venta '+sello(new Date()), cuando:Date.now(),
-    enviado:0, foto:'', mini:'',
     etiquetas: etiquetas.map(function(e){
       return {usuario:e.usuario, articulo:e.articulo, transportista:e.transportista,
-              otroNombre:e.otroNombre, foto:e.foto||'', mini:e.mini||''};
+              otroNombre:e.otroNombre, foto:e.foto||'', mini:e.mini||'',
+              enviado:0, envioFoto:'', envioMini:''};
     })
   };
   historico.unshift(v);
@@ -954,30 +976,32 @@ function pintaHistorico(){
       '<button class="cab" type="button" aria-expanded="false">'+
         '<span class="flecha">&#9654;</span>'+
         '<span class="nom">'+esc(v.nombre)+'</span>'+
-        (v.enviado ? '<span class="env">Enviado</span>' : '')+
+        (textoCabecera(v) ? '<span class="env">'+textoCabecera(v)+'</span>' : '')+
         '<span class="cuenta">'+cuantas(v.etiquetas.length)+'</span>'+
       '</button>'+
       '<div class="cuerpo" hidden>'+
-        '<div class="envio">'+
-          '<button class="marca" type="button" aria-pressed="'+(v.enviado?'true':'false')+'">'+
-            textoMarca(v)+'</button>'+
-          (v.mini
-            ? '<button class="mini-et justi" type="button" aria-label="Ver la imagen del envío"><img src="'+esc(v.mini)+'" alt=""></button>'
-            : '<button class="mini-et pon justi" type="button" aria-label="Adjuntar la imagen del envío">+</button>')+
-        '</div>'+
         '<ul class="cola">'+v.etiquetas.map(function(e,j){
           var t=trans(e.transportista);
           return '<li>'+
-            '<span class="barra-c" style="--c:'+t.color+'"></span>'+
-            '<span class="n mono">'+dos(j+1)+'</span>'+
-            '<span class="datos">'+
-              '<span class="u">'+esc(e.usuario)+'</span>'+
-              (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
-              '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
+            '<span class="fila-et">'+
+              '<span class="barra-c" style="--c:'+t.color+'"></span>'+
+              '<span class="n mono">'+dos(j+1)+'</span>'+
+              '<span class="datos">'+
+                '<span class="u">'+esc(e.usuario)+'</span>'+
+                (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
+                '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
+              '</span>'+
+              (e.mini
+                ? '<button class="mini-et" type="button" data-ver="'+j+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>'
+                : '<button class="mini-et pon" type="button" data-pon="'+j+'" aria-label="Añadir una captura a '+esc(e.usuario)+'">+</button>')+
             '</span>'+
-            (e.mini
-              ? '<button class="mini-et" type="button" data-ver="'+j+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>'
-              : '<button class="mini-et pon" type="button" data-pon="'+j+'" aria-label="Añadir una captura a '+esc(e.usuario)+'">+</button>')+
+            '<span class="envio">'+
+              '<button class="marca" type="button" data-marca="'+j+'" aria-pressed="'+(e.enviado?'true':'false')+'">'+
+                textoMarca(e)+'</button>'+
+              (e.envioMini
+                ? '<button class="mini-et envio-f" type="button" data-env="'+j+'" aria-label="Ver la foto del envío de '+esc(e.usuario)+'"><img src="'+esc(e.envioMini)+'" alt=""></button>'
+                : '<button class="mini-et pon envio-f" type="button" data-env="'+j+'" aria-label="Adjuntar la foto del envío de '+esc(e.usuario)+'">+</button>')+
+            '</span>'+
           '</li>';
         }).join('')+'</ul>'+
         '<div class="hueco"></div>'+
@@ -1004,17 +1028,25 @@ function pintaHistorico(){
 
     // Marcar y desmarcar se hace a mano sobre lo que ya está pintado: repintar
     // el histórico plegaría la venta que se está mirando en cada toque.
-    $('.marca',li).addEventListener('click', function(){
-      v.enviado = v.enviado ? 0 : Date.now();
-      guardaHist(); pintaEnvio(li, v);
+    Array.prototype.forEach.call(li.querySelectorAll('.marca'), function(b){
+      b.addEventListener('click', function(){
+        var e=v.etiquetas[+b.getAttribute('data-marca')];
+        if(!e) return;
+        e.enviado = e.enviado ? 0 : Date.now();
+        guardaHist(); pintaEnvio(li, v, b);
+      });
     });
-    $('.justi',li).addEventListener('click', function(){
-      if(v.foto) abreFoto({usuario:v.nombre, foto:v.foto}, refJusti(iv));
-      else engancha(refJusti(iv));
+    Array.prototype.forEach.call(li.querySelectorAll('.envio-f'), function(b){
+      b.addEventListener('click', function(){
+        var ie=+b.getAttribute('data-env'), e=v.etiquetas[ie];
+        if(!e) return;
+        if(e.envioFoto) abreFoto({usuario:e.usuario, foto:e.envioFoto}, refEnvio(iv, ie));
+        else engancha(refEnvio(iv, ie));
+      });
     });
 
-    // Las de las etiquetas, no la del envío, que ya tiene lo suyo.
-    Array.prototype.forEach.call(li.querySelectorAll('.mini-et:not(.justi)'), function(b){
+    // Las capturas de la conversación, que son el otro hueco de la misma fila.
+    Array.prototype.forEach.call(li.querySelectorAll('.mini-et:not(.envio-f)'), function(b){
       b.addEventListener('click', function(){
         var pon=b.getAttribute('data-pon');
         if(pon!==null){ engancha(refVenta(iv, +pon)); return; }
@@ -1048,23 +1080,31 @@ function armaBorrado(boton, v){
   });
 }
 
-function textoMarca(v){
+function textoMarca(e){
   return '<span class="tic">&#10003;</span>'+
-         (v.enviado ? 'Enviado · '+esc(sello(new Date(v.enviado))) : 'Marcar como enviado');
+         (e.enviado ? 'Enviado · '+esc(sello(new Date(e.enviado))) : 'Marcar como enviado');
 }
-function pintaEnvio(li, v){
-  var b=$('.marca',li);
-  b.setAttribute('aria-pressed', v.enviado ? 'true' : 'false');
-  b.innerHTML=textoMarca(v);
-  var chip=$('.env',li);
-  if(v.enviado && !chip){
+
+// Lo que se ve de una venta sin abrirla: nada, cuántas van, o que ya están todas.
+function textoCabecera(v){
+  var n=v.etiquetas.filter(function(e){ return e.enviado; }).length;
+  if(!n) return '';
+  return n===v.etiquetas.length ? 'Enviado' : n+'/'+v.etiquetas.length;
+}
+
+function pintaEnvio(li, v, boton){
+  var e=v.etiquetas[+boton.getAttribute('data-marca')];
+  boton.setAttribute('aria-pressed', e.enviado ? 'true' : 'false');
+  boton.innerHTML=textoMarca(e);
+
+  var texto=textoCabecera(v), chip=$('.env',li);
+  if(!texto){ if(chip) chip.parentNode.removeChild(chip); return; }
+  if(!chip){
     chip=document.createElement('span');
     chip.className='env';
-    chip.textContent='Enviado';
     $('.cab',li).insertBefore(chip, $('.cuenta',li));
-  }else if(!v.enviado && chip){
-    chip.parentNode.removeChild(chip);
   }
+  chip.textContent=texto;
 }
 
 // Vuelven con id nuevo: si la venta se devuelve dos veces, no se pisan entre sí

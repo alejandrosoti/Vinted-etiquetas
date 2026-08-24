@@ -483,10 +483,19 @@ function montaApp(datosIniciales, opciones = {}) {
   comprueba('solo en la suya', !env.servidor.datos.historico[0].etiquetas[1].enviado);
 
   marca(1).click();
-  comprueba('con todas marcadas la cabecera dice Enviado', e$('ul.hist .env').textContent === 'Enviado',
-            e$('ul.hist .env').textContent);
+  comprueba('con todas marcadas, la venta se muda a las enviadas',
+            ed.querySelectorAll('#enviadasWrap ul.hist > li').length === 1);
+  comprueba('y sale de las guardadas', ed.querySelectorAll('#histWrap ul.hist > li').length === 0);
+  comprueba('la tarjeta de enviadas asoma', e$('#tarjetaEnviadas').hidden === false);
+  comprueba('mudarse no le cierra el panel', ed.querySelector('#enviadasWrap .cuerpo').hidden === false);
+  comprueba('y no repite «Enviado» en la fila, que ya lo dice la sección',
+            !ed.querySelector('#enviadasWrap .env'));
+
   marca(1).click();
   comprueba('otro toque lo deshace', marca(1).getAttribute('aria-pressed') === 'false');
+  comprueba('y la venta vuelve a las guardadas',
+            ed.querySelectorAll('#histWrap ul.hist > li').length === 1);
+  comprueba('con la tarjeta de enviadas otra vez escondida', e$('#tarjetaEnviadas').hidden === true);
   comprueba('y la cuenta vuelve atrás', e$('ul.hist .env').textContent === '1/2');
   marca(0).click();
   comprueba('sin ninguna, la marca de la cabecera desaparece', !e$('ul.hist .env'));
@@ -528,6 +537,8 @@ function montaApp(datosIniciales, opciones = {}) {
   comprueba('quitarla deja la etiqueta sin foto de envío', !sinEnvio.envioFoto);
   comprueba('y la borra del servidor', !env.servidor.fotos.has(conEnvio.envioFoto));
   comprueba('pero enviada se queda', !!sinEnvio.enviado);
+  comprueba('y la venta sigue entre las enviadas',
+            ed.querySelectorAll('#enviadasWrap ul.hist > li').length === 1);
 
   // ================= el puente desde la versión de la venta entera =================
   const puente = montaApp({ etiquetas: [], historico: [

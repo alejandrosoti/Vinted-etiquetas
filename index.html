@@ -316,6 +316,11 @@ ul.hist li:first-child{border-top:0}
     <div id="histWrap"></div>
   </section>
 
+  <section class="card" id="tarjetaEnviadas" hidden>
+    <h2>Ventas enviadas</h2>
+    <div id="enviadasWrap"></div>
+  </section>
+
   <button class="btn pri ancho" id="btnImprimir" type="button">Imprimir A4</button>
   <div id="parte" hidden></div>
   <div class="hueco"></div>
@@ -965,21 +970,42 @@ function archiva(){
 }
 function cuantas(n){ return n+(n===1 ? ' etiqueta' : ' etiquetas'); }
 
+/* Una venta está en un sitio o en el otro según lo que lleve marcado: en cuanto
+   se marca la última etiqueta se muda sola a las enviadas. Es solo una forma de
+   repartir la misma lista; no se copia ni se mueve nada por dentro. */
+function todasEnviadas(v){
+  return v.etiquetas.length > 0 && v.etiquetas.every(function(e){ return e.enviado; });
+}
+
+// Qué ventas están desplegadas, por id. Sin esto, cada toque en una marca
+// repintaría el histórico y le cerraría en la cara la que se está mirando.
+var abiertas={};
+
 function pintaHistorico(){
-  var w=$('#histWrap');
-  if(!historico.length){
-    w.innerHTML='<p class="vacio">Todavía no hay ninguna venta guardada · Se guardan al imprimir, o con el botón «Guardar selección»</p>';
-    return;
-  }
-  w.innerHTML='<ul class="hist">'+historico.map(function(v,i){
-    return '<li data-i="'+i+'">'+
-      '<button class="cab" type="button" aria-expanded="false">'+
+  var pendientes=[], enviadas=[];
+  historico.forEach(function(v,i){
+    (todasEnviadas(v) ? enviadas : pendientes).push({v:v, i:i});
+  });
+
+  pintaVentas($('#histWrap'), pendientes,
+    'Todavía no hay ninguna venta guardada · Se guardan al imprimir, o con el botón «Guardar selección»');
+  $('#tarjetaEnviadas').hidden = !enviadas.length;
+  pintaVentas($('#enviadasWrap'), enviadas, '');
+}
+
+function pintaVentas(w, lista, siVacia){
+  if(!lista.length){ w.innerHTML = siVacia ? '<p class="vacio">'+siVacia+'</p>' : ''; return; }
+
+  w.innerHTML='<ul class="hist">'+lista.map(function(x){
+    var v=x.v, abierta=!!abiertas[v.id];
+    return '<li data-i="'+x.i+'"'+(abierta ? ' class="abierta"' : '')+'>'+
+      '<button class="cab" type="button" aria-expanded="'+(abierta?'true':'false')+'">'+
         '<span class="flecha">&#9654;</span>'+
         '<span class="nom">'+esc(v.nombre)+'</span>'+
         (textoCabecera(v) ? '<span class="env">'+textoCabecera(v)+'</span>' : '')+
         '<span class="cuenta">'+cuantas(v.etiquetas.length)+'</span>'+
       '</button>'+
-      '<div class="cuerpo" hidden>'+
+      '<div class="cuerpo"'+(abierta ? '' : ' hidden')+'>'+
         '<ul class="cola">'+v.etiquetas.map(function(e,j){
           var t=trans(e.transportista);
           return '<li>'+
@@ -1014,26 +1040,24 @@ function pintaHistorico(){
   }).join('')+'</ul>';
 
   Array.prototype.forEach.call(w.querySelectorAll('.hist > li'), function(li){
-    var v=historico[+li.getAttribute('data-i')];
+    var iv=+li.getAttribute('data-i'), v=historico[iv];
     var cab=$('.cab',li), cuerpo=$('.cuerpo',li);
     cab.addEventListener('click', function(){
       var abre=cuerpo.hidden;
       cuerpo.hidden=!abre;
+      abiertas[v.id]=abre;
       li.classList.toggle('abierta', abre);
       cab.setAttribute('aria-expanded', abre ? 'true' : 'false');
     });
     $('.devolver',li).addEventListener('click', function(){ devuelve(v); });
     armaBorrado($('.borrar',li), v);
-    var iv=+li.getAttribute('data-i');
 
-    // Marcar y desmarcar se hace a mano sobre lo que ya está pintado: repintar
-    // el histórico plegaría la venta que se está mirando en cada toque.
     Array.prototype.forEach.call(li.querySelectorAll('.marca'), function(b){
       b.addEventListener('click', function(){
         var e=v.etiquetas[+b.getAttribute('data-marca')];
         if(!e) return;
         e.enviado = e.enviado ? 0 : Date.now();
-        guardaHist(); pintaEnvio(li, v, b);
+        guardaHist(); pintaHistorico();
       });
     });
     Array.prototype.forEach.call(li.querySelectorAll('.envio-f'), function(b){
@@ -1056,7 +1080,6 @@ function pintaHistorico(){
     });
   });
 }
-
 /* En dos toques, como el botón de vaciar. Una venta borrada no vuelve: se lleva
    por delante sus capturas, que el servidor barre en cuanto ve que ya no las
    menciona nadie. Si quieres quedarte con las etiquetas, devuélvelas antes. */
@@ -1085,26 +1108,11 @@ function textoMarca(e){
          (e.enviado ? 'Enviado · '+esc(sello(new Date(e.enviado))) : 'Marcar como enviado');
 }
 
-// Lo que se ve de una venta sin abrirla: nada, cuántas van, o que ya están todas.
+// Cuántas van, y solo mientras queden: cuando están todas, la venta ya está en
+// «Ventas enviadas» y repetirlo en su fila no dice nada nuevo.
 function textoCabecera(v){
   var n=v.etiquetas.filter(function(e){ return e.enviado; }).length;
-  if(!n) return '';
-  return n===v.etiquetas.length ? 'Enviado' : n+'/'+v.etiquetas.length;
-}
-
-function pintaEnvio(li, v, boton){
-  var e=v.etiquetas[+boton.getAttribute('data-marca')];
-  boton.setAttribute('aria-pressed', e.enviado ? 'true' : 'false');
-  boton.innerHTML=textoMarca(e);
-
-  var texto=textoCabecera(v), chip=$('.env',li);
-  if(!texto){ if(chip) chip.parentNode.removeChild(chip); return; }
-  if(!chip){
-    chip=document.createElement('span');
-    chip.className='env';
-    $('.cab',li).insertBefore(chip, $('.cuenta',li));
-  }
-  chip.textContent=texto;
+  return (n && n<v.etiquetas.length) ? n+'/'+v.etiquetas.length : '';
 }
 
 // Vuelven con id nuevo: si la venta se devuelve dos veces, no se pisan entre sí

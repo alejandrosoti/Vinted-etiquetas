@@ -133,8 +133,19 @@ sus datos: un **Marcar como enviado** y un hueco para la foto del envío.
 - Es **la segunda imagen** de la etiqueta: la captura de arriba sigue siendo la
   de la conversación o el QR, y no se pisan.
 
-Sin abrir la venta se ve por dónde va: **3/12** mientras queden, y **ENVIADO**
-cuando estén todas.
+Sin abrir la venta se ve por dónde va: **3/12** mientras queden.
+
+### Ventas enviadas
+
+Cuando marcas la última etiqueta que faltaba, la venta **se muda sola** a una
+sección aparte, «Ventas enviadas», que solo aparece cuando hay alguna. En
+«Ventas guardadas» se queda únicamente lo que aún tiene algo por llevar, que es
+lo que hay que mirar cada mañana.
+
+No se copia ni se mueve nada por dentro: es la misma lista repartida en dos
+sitios según lo que lleve marcado. Si desmarcas una etiqueta, la venta vuelve a
+las guardadas. Y las que estés mirando se quedan abiertas cuando la lista se
+repinta, incluso al cambiarse de sección.
 
 **Eliminar venta** la borra del histórico, en dos toques: el primero pregunta y
 el segundo borra. No hay vuelta atrás — se van también sus capturas, que el

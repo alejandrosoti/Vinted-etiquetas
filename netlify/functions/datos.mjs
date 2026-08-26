@@ -85,9 +85,9 @@ async function capturas(req, clave) {
    dejaría su imagen ocupando sitio para siempre y sin forma de llegar a ella. */
 async function barreCapturas(datos) {
   const vivas = new Set();
-  // Cada etiqueta puede tener dos imágenes: la captura de la conversación y la
-  // foto del envío. Las dos cuentan; a la que se olvide aquí, el barrido se la
-  // lleva por delante en el primer guardado.
+  // Cada etiqueta puede tener hasta tres imágenes: dos capturas (el QR y la
+  // que sirva para reconocer el paquete) y la foto del envío. Las tres cuentan;
+  // a la que se olvide aquí, el barrido se la lleva en el primer guardado.
   for (const e of datos.etiquetas) vivas_de(e, vivas);
   for (const v of datos.historico) {
     if (v && v.foto) vivas.add(v.foto);   // de cuando el envío era de la venta entera
@@ -103,8 +103,7 @@ async function barreCapturas(datos) {
 
 function vivas_de(e, vivas) {
   if (!e) return;
-  if (e.foto) vivas.add(e.foto);
-  if (e.envioFoto) vivas.add(e.envioFoto);
+  for (const c of [e.foto, e.foto2, e.envioFoto]) if (c) vivas.add(c);
 }
 
 /* Se guarda lo que llega, pero solo con la forma esperada: si un día el cliente

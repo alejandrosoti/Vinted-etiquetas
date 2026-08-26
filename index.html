@@ -158,6 +158,7 @@ ul.hist li:first-child{border-top:0}
   border:1px dashed #46504a;border-radius:var(--r2);padding:15px 14px;
   background:var(--bg);font-weight:700;font-size:14px;width:100%;text-align:center;color:var(--tx2);
 }
+.captura[hidden]{display:none}
 .previa{display:flex;align-items:center;gap:11px;margin-top:10px}
 .previa img{width:52px;height:72px;object-fit:cover;object-position:top;border-radius:7px;border:1px solid var(--bor);background:#000;flex:0 0 auto}
 .previa .crece{flex:1;min-width:0;font-size:13px;color:var(--tx2)}
@@ -286,14 +287,10 @@ ul.hist li:first-child{border-top:0}
     <label class="lab">Transportista</label>
     <div class="trans" id="mTrans"></div>
     <div class="hueco"></div>
-    <label class="lab">Captura <span style="font-weight:500">· opcional</span></label>
+    <label class="lab">Capturas <span style="font-weight:500">· opcional, hasta dos</span></label>
     <button class="captura" id="btnCaptura" type="button">Elegir una captura</button>
     <input id="ficheroFoto" type="file" accept="image/*" hidden>
-    <div class="previa" id="previa" hidden>
-      <img id="previaImg" alt="">
-      <span class="crece" id="previaTx"></span>
-      <button class="btn chico" id="previaQuitar" type="button">Quitar</button>
-    </div>
+    <div id="previas" hidden></div>
     <div class="hueco"></div>
     <button class="btn pri ancho" id="btnAñadir" type="button" disabled>Añadir a la hoja</button>
     <p class="error" id="mError" hidden></p>
@@ -407,6 +404,10 @@ function normalizaEtiquetas(lista){
         otroNombre: e.otroNombre ? String(e.otroNombre) : '',
         foto: clave(e.foto),
         mini: miniatura(e.mini),
+        // La segunda captura: la que hace falta para reconocer el paquete
+        // cuando el QR solo no basta.
+        foto2: clave(e.foto2),
+        mini2: miniatura(e.mini2),
         // Lo del envío: la fecha en que se llevó y la foto del resguardo. Solo
         // se usan en el histórico, pero se validan aquí como todo lo demás.
         enviado: Number(e.enviado) || 0,
@@ -518,10 +519,12 @@ function añadeManual(){
   etiquetas.push({
     id:id(), usuario:u, articulo:$('#mArticulo').value.trim(),
     transportista:mSel, otroNombre:'',
-    foto: fotoPendiente ? fotoPendiente.clave : '',
-    mini: fotoPendiente ? fotoPendiente.mini : ''
+    foto:  pendientes[0] ? pendientes[0].clave : '',
+    mini:  pendientes[0] ? pendientes[0].mini  : '',
+    foto2: pendientes[1] ? pendientes[1].clave : '',
+    mini2: pendientes[1] ? pendientes[1].mini  : ''
   });
-  fotoPendiente=null; pintaPrevia(); $('#ficheroFoto').value='';
+  pendientes=[]; pintaPrevia(); $('#ficheroFoto').value='';
   guarda(); render();
   $('#mUsuario').value=''; $('#mArticulo').value='';
   refrescaAñadir();
@@ -610,9 +613,7 @@ function render(){
           (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
           '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
         '</span>'+
-        (e.mini
-          ? '<button class="mini-et" type="button" data-ver="'+esc(e.id)+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>'
-          : '<button class="mini-et pon" type="button" data-pon="'+esc(e.id)+'" aria-label="Añadir una captura a '+esc(e.usuario)+'">+</button>')+
+        huecosCaptura(e, e.id)+
         '<button class="quitar" type="button" data-id="'+esc(e.id)+'" aria-label="Quitar '+esc(e.usuario)+'">&times;</button>'+
       '</li>';
     }).join('')+'</ul>';
@@ -625,11 +626,11 @@ function render(){
     });
     Array.prototype.forEach.call(wrap.querySelectorAll('.mini-et'), function(b){
       b.addEventListener('click', function(){
-        var pon=b.getAttribute('data-pon');
-        if(pon){ engancha(refCola(pon)); return; }
+        var c=campos(b), pon=b.getAttribute('data-pon');
+        if(pon){ engancha(refCola(pon, c[0], c[1])); return; }
         var ver=b.getAttribute('data-ver');
         var e=etiquetas.filter(function(x){ return x.id===ver; })[0];
-        if(e) abreFoto(e, refCola(ver));
+        if(e) abreFoto({usuario:e.usuario, foto:e[c[0]]}, refCola(ver, c[0], c[1]));
       });
     });
   }
@@ -660,20 +661,47 @@ function pintaHoja(){
 }
 
 /* ============ Capturas ============ */
-var fotoPendiente=null;   // {clave, dataUrl, mini, bytes} elegida y aún sin etiqueta
+/* Los huecos de captura de una fila. El segundo solo asoma cuando hay una
+   primera: dos huecos vacíos e iguales no dirían cuál es cuál, y lo corriente
+   es llevar una sola. Vale igual para la cola y para el histórico; lo único
+   que cambia es con qué se señala la etiqueta, su id o su sitio en la venta. */
+function huecosCaptura(e, señal){
+  return unHueco(e.mini, señal, '1', 'la captura de '+e.usuario)+
+         (e.mini ? unHueco(e.mini2, señal, '2', 'la segunda foto de '+e.usuario) : '');
+}
+function unHueco(mini, señal, cual, quien){
+  var comun=' data-slot="'+cual+'" ';
+  return mini
+    ? '<button class="mini-et" type="button" data-ver="'+esc(señal)+'"'+comun+
+      'aria-label="Ver '+esc(quien)+'"><img src="'+esc(mini)+'" alt=""></button>'
+    : '<button class="mini-et pon" type="button" data-pon="'+esc(señal)+'"'+comun+
+      'aria-label="Añadir '+esc(quien)+'">+</button>';
+}
+// Los campos donde escribe el hueco que se ha tocado.
+function campos(b){
+  return b.getAttribute('data-slot')==='2' ? ['foto2','mini2'] : ['foto','mini'];
+}
+
+
+// Hasta dos, elegidas y aún sin etiqueta: {clave, dataUrl, mini, bytes}.
+// Dos y no más porque son las que caben en una fila sin que deje de leerse.
+var TOPE_CAPTURAS=2;
+var pendientes=[];
 var destino=null;         // a qué etiqueta ya existente va la que se está eligiendo
 
 /* Una referencia sabe leer su etiqueta y guardar donde toque, sin que el resto
    del código tenga que saber si vive en la cola o dentro de una venta ya guardada. */
-function refCola(idEt){
+function refCola(idEt, campo, campoMini){
   return {
     lee: function(){ return etiquetas.filter(function(x){ return x.id===idEt; })[0]; },
+    campo:campo||'foto', campoMini:campoMini||'mini',
     graba: function(){ guarda(); render(); }
   };
 }
-function refVenta(iv, ie){
+function refVenta(iv, ie, campo, campoMini){
   return {
     lee: function(){ return historico[iv] && historico[iv].etiquetas[ie]; },
+    campo:campo||'foto', campoMini:campoMini||'mini',
     graba: function(){ guardaHist(); pintaHistorico(); }
   };
 }
@@ -749,7 +777,8 @@ function eligeFoto(fichero){
     var clave=id();
     return subeFoto(clave, r.blob).then(function(){
       if(!ref){
-        fotoPendiente={clave:clave, dataUrl:r.dataUrl, mini:r.mini, bytes:r.blob.size};
+        if(pendientes.length>=TOPE_CAPTURAS){ borraFoto(clave); return; }
+        pendientes.push({clave:clave, dataUrl:r.dataUrl, mini:r.mini, bytes:r.blob.size});
         pintaPrevia();
         return;
       }
@@ -764,7 +793,7 @@ function eligeFoto(fichero){
     alerta($('#mError'), 'La captura no ha subido: '+err.message);
   }).then(function(){
     $('#btnCaptura').disabled=false;
-    $('#btnCaptura').textContent='Elegir una captura';
+    pintaBotonCaptura();
     pintaOcupado(false);
   });
 }
@@ -784,16 +813,32 @@ function desengancha(ref){
 }
 
 function pintaPrevia(){
-  var caja=$('#previa');
-  if(!fotoPendiente){ caja.hidden=true; $('#previaImg').removeAttribute('src'); return; }
-  caja.hidden=false;
-  $('#previaImg').src=fotoPendiente.dataUrl;
-  $('#previaTx').textContent='Lista, '+Math.round(fotoPendiente.bytes/1024)+' KB. Se guarda con esta etiqueta.';
+  var caja=$('#previas');
+  caja.hidden=!pendientes.length;
+  caja.innerHTML=pendientes.map(function(f,i){
+    return '<div class="previa">'+
+      '<img src="'+esc(f.dataUrl)+'" alt="">'+
+      '<span class="crece">'+(i===0 ? 'Captura' : 'Segunda foto')+', '+
+        Math.round(f.bytes/1024)+' KB. Se guarda con esta etiqueta.</span>'+
+      '<button class="btn chico" type="button" data-quitar="'+i+'">Quitar</button>'+
+    '</div>';
+  }).join('');
+  Array.prototype.forEach.call(caja.querySelectorAll('[data-quitar]'), function(b){
+    b.addEventListener('click', function(){ olvidaFoto(+b.getAttribute('data-quitar')); });
+  });
+  pintaBotonCaptura();
+}
+function pintaBotonCaptura(){
+  var b=$('#btnCaptura');
+  b.hidden = pendientes.length>=TOPE_CAPTURAS;
+  b.textContent = pendientes.length ? 'Añadir otra foto' : 'Elegir una captura';
 }
 
-function olvidaFoto(){
-  if(fotoPendiente) borraFoto(fotoPendiente.clave);
-  fotoPendiente=null;
+function olvidaFoto(i){
+  var f=pendientes[i];
+  if(!f) return;
+  borraFoto(f.clave);
+  pendientes.splice(i,1);
   pintaPrevia();
   $('#ficheroFoto').value='';
 }
@@ -961,6 +1006,7 @@ function archiva(){
     etiquetas: etiquetas.map(function(e){
       return {usuario:e.usuario, articulo:e.articulo, transportista:e.transportista,
               otroNombre:e.otroNombre, foto:e.foto||'', mini:e.mini||'',
+              foto2:e.foto2||'', mini2:e.mini2||'',
               enviado:0, envioFoto:'', envioMini:''};
     })
   };
@@ -1017,9 +1063,7 @@ function pintaVentas(w, lista, siVacia){
                 (e.articulo ? '<span class="a">'+esc(e.articulo)+'</span>' : '')+
                 '<span class="t" style="--c:'+t.color+'">'+esc(rotulo(e))+'</span>'+
               '</span>'+
-              (e.mini
-                ? '<button class="mini-et" type="button" data-ver="'+j+'" aria-label="Ver la captura de '+esc(e.usuario)+'"><img src="'+esc(e.mini)+'" alt=""></button>'
-                : '<button class="mini-et pon" type="button" data-pon="'+j+'" aria-label="Añadir una captura a '+esc(e.usuario)+'">+</button>')+
+              huecosCaptura(e, j)+
             '</span>'+
             '<span class="envio">'+
               '<button class="marca" type="button" data-marca="'+j+'" aria-pressed="'+(e.enviado?'true':'false')+'">'+
@@ -1069,13 +1113,13 @@ function pintaVentas(w, lista, siVacia){
       });
     });
 
-    // Las capturas de la conversación, que son el otro hueco de la misma fila.
+    // Las capturas, que son los otros huecos de la misma fila.
     Array.prototype.forEach.call(li.querySelectorAll('.mini-et:not(.envio-f)'), function(b){
       b.addEventListener('click', function(){
-        var pon=b.getAttribute('data-pon');
-        if(pon!==null){ engancha(refVenta(iv, +pon)); return; }
-        var ie=+b.getAttribute('data-ver');
-        if(v.etiquetas[ie]) abreFoto(v.etiquetas[ie], refVenta(iv, ie));
+        var c=campos(b), pon=b.getAttribute('data-pon');
+        if(pon!==null){ engancha(refVenta(iv, +pon, c[0], c[1])); return; }
+        var ie=+b.getAttribute('data-ver'), e=v.etiquetas[ie];
+        if(e) abreFoto({usuario:e.usuario, foto:e[c[0]]}, refVenta(iv, ie, c[0], c[1]));
       });
     });
   });
@@ -1122,7 +1166,7 @@ function devuelve(v){
     etiquetas.push({
       id:id(), usuario:e.usuario, articulo:e.articulo||'',
       transportista:e.transportista, otroNombre:e.otroNombre||'',
-      foto:e.foto||'', mini:e.mini||''
+      foto:e.foto||'', mini:e.mini||'', foto2:e.foto2||'', mini2:e.mini2||''
     });
   });
   guarda(); render();
@@ -1210,7 +1254,6 @@ $('#ficheroFoto').addEventListener('change', function(){
   this.value='';
   if(f) eligeFoto(f);
 });
-$('#previaQuitar').addEventListener('click', olvidaFoto);
 $('#visorCerrar').addEventListener('click', cierraFoto);
 $('#visorCambiar').addEventListener('click', function(){ var r=refEnVisor; cierraFoto(); engancha(r); });
 $('#visorQuitar').addEventListener('click', function(){ var r=refEnVisor; cierraFoto(); desengancha(r); });

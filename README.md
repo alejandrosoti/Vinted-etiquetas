@@ -62,17 +62,22 @@ aparecen, porque no habría nada que filtrar.
 
 ## Las capturas
 
-Cada etiqueta puede llevar **una** captura enganchada, y es opcional: si no la
-tienes a mano, añades la etiqueta igual y ya se la pondrás. Sirve tanto para la
-captura de la conversación como para el QR de recogida, que suele llegar después
-de haber apuntado la venta.
+Cada etiqueta puede llevar **hasta dos** capturas, y las dos son opcionales: si
+no las tienes a mano, añades la etiqueta igual y ya se las pondrás. La primera
+suele ser el QR de recogida o la conversación; la segunda está para lo que haga
+falta para reconocer el paquete cuando el QR solo no basta.
 
-Se engancha de dos maneras:
+Se enganchan de dos maneras:
 
-- **Al crearla**, con el botón que hay justo después del transportista.
+- **Al crearla**, con el botón que hay justo después del transportista. Con una
+  elegida se convierte en «Añadir otra foto», y con dos desaparece.
 - **Después**, tocando el hueco `+` de su fila. Funciona igual en la cola y
   dentro de una venta ya guardada, que es donde acaba el QR si el papel ya
   estaba impreso.
+
+En las filas, **el hueco de la segunda solo asoma cuando hay una primera**: dos
+huecos vacíos e iguales no dirían cuál es cuál, y lo corriente es llevar una
+sola. Cada una se toca, se cambia y se quita por su cuenta.
 
 Tocando una miniatura se abre a pantalla completa, con **Cambiar** y **Quitar**.
 Al cambiarla, la imagen anterior se borra del servidor en el momento.

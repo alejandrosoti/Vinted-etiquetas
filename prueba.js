@@ -73,7 +73,7 @@ function montaApp(datosIniciales, opciones = {}) {
         servidor.datos = JSON.parse(o.body);
         // El barrido de capturas huérfanas, igual que en la función de verdad.
         const vivas = new Set();
-        const dos_fotos = e => { if (!e) return; if (e.foto) vivas.add(e.foto); if (e.envioFoto) vivas.add(e.envioFoto); };
+        const dos_fotos = e => { if (!e) return; for (const c of [e.foto, e.foto2, e.envioFoto]) if (c) vivas.add(c); };
         for (const e of servidor.datos.etiquetas) dos_fotos(e);
         for (const v of servidor.datos.historico) {
           if (v && v.foto) vivas.add(v.foto);
@@ -185,17 +185,20 @@ function montaApp(datosIniciales, opciones = {}) {
   eligeUna({ d, w });
   await espera(40);
   comprueba('la captura elegida sube al servidor', servidor.fotos.size === antesFotos + 1, servidor.fotos.size);
-  comprueba('y se enseña la previa', $('#previa').hidden === false);
-  comprueba('diciendo lo que pesa ya encogida', /KB/.test($('#previaTx').textContent), $('#previaTx').textContent);
+  comprueba('y se enseña la previa', $('#previas').hidden === false);
+  comprueba('diciendo lo que pesa ya encogida', /KB/.test($('#previas').textContent), $('#previas').textContent);
 
   escribe('#mUsuario', 'con-captura');
   $('#btnAñadir').click();
   await espera(700);
   const conFoto = servidor.datos.etiquetas.filter(e => e.usuario === 'con-captura')[0];
   comprueba('la etiqueta se queda con su captura', !!(conFoto && conFoto.foto), JSON.stringify(conFoto));
-  comprueba('la previa se limpia para la siguiente', $('#previa').hidden === true);
+  comprueba('la previa se limpia para la siguiente', $('#previas').hidden === true);
   comprueba('sale la miniatura en su fila', d.querySelectorAll('#colaWrap .mini-et:not(.pon)').length === 1);
-  comprueba('las demás filas ofrecen ponerle una', d.querySelectorAll('#colaWrap .mini-et.pon').length === 11);
+  comprueba('las demás filas ofrecen ponerle una',
+            d.querySelectorAll('#colaWrap .mini-et.pon[data-slot="1"]').length === 11);
+  comprueba('y la que ya tiene una ofrece la segunda',
+            d.querySelectorAll('#colaWrap .mini-et.pon[data-slot="2"]').length === 1);
   comprueba('y solo en la suya', d.querySelectorAll('#colaWrap ul.cola > li').length === 12);
 
   // el orden del formulario y la hoja limpia
@@ -252,7 +255,7 @@ function montaApp(datosIniciales, opciones = {}) {
             [...d.querySelectorAll('#colaWrap ul.cola > li')]
               .filter(li => li.querySelector('.u').textContent === quien)[0]
               .querySelector('.mini-et:not(.pon)') !== null);
-  comprueba('no toca la previa del formulario', $('#previa').hidden === true);
+  comprueba('no toca la previa del formulario', $('#previas').hidden === true);
 
   // cambiarla por otra: la vieja se va
   const claveVieja = yaConFoto.foto;
@@ -555,6 +558,71 @@ function montaApp(datosIniciales, opciones = {}) {
   comprueba('y su foto pasa a la primera etiqueta',
             puente.servidor.datos.historico[0].etiquetas[0].envioFoto === 'abcd1234',
             puente.servidor.datos.historico[0].etiquetas[0].envioFoto);
+
+  // ================= dos capturas por etiqueta =================
+  const dosf = montaApp(null, { codigoGuardado: 'abrete-sesamo' });
+  await espera(60);
+  const dd = dosf.d, d$ = x => dd.querySelector(x);
+  const escribeD = (sel, v) => {
+    const c = dd.querySelector(sel);
+    c.value = v;
+    c.dispatchEvent(new dosf.w.Event('input'));
+  };
+  dd.querySelector('#mTrans button[data-t="inpost"]').click();
+  escribeD('#mUsuario', 'dos-fotos');
+
+  comprueba('el formulario empieza pidiendo una captura', d$('#btnCaptura').textContent === 'Elegir una captura');
+  eligeUna({ d: dd, w: dosf.w }, 'qr.jpg');
+  await espera(40);
+  comprueba('con una elegida, ofrece otra', d$('#btnCaptura').textContent === 'Añadir otra foto',
+            d$('#btnCaptura').textContent);
+  eligeUna({ d: dd, w: dosf.w }, 'paquete.jpg');
+  await espera(40);
+  comprueba('caben dos', dd.querySelectorAll('#previas .previa').length === 2);
+  comprueba('y a la tercera ya no deja', d$('#btnCaptura').hidden === true);
+
+  d$('#btnAñadir').click();
+  await espera(700);
+  const conDos = dosf.servidor.datos.etiquetas[0];
+  comprueba('la etiqueta se lleva las dos, y distintas',
+            !!conDos.foto && !!conDos.foto2 && conDos.foto !== conDos.foto2,
+            JSON.stringify([conDos.foto, conDos.foto2]));
+  comprueba('las dos suben al servidor',
+            dosf.servidor.fotos.has(conDos.foto) && dosf.servidor.fotos.has(conDos.foto2));
+  comprueba('la fila enseña las dos miniaturas',
+            dd.querySelectorAll('#colaWrap .mini-et:not(.pon)').length === 2);
+  comprueba('y el formulario se limpia del todo',
+            d$('#previas').hidden === true && d$('#btnCaptura').textContent === 'Elegir una captura');
+
+  dd.querySelector('#colaWrap .mini-et[data-slot="2"]').click();
+  comprueba('al tocar la segunda se abre el visor', d$('#visor').hidden === false);
+  d$('#visorQuitar').click();
+  await espera(700);
+  const solaUna = dosf.servidor.datos.etiquetas[0];
+  comprueba('quitar la segunda deja la primera en su sitio', !!solaUna.foto && !solaUna.foto2,
+            JSON.stringify([solaUna.foto, solaUna.foto2]));
+  comprueba('y borra del servidor solo la suya',
+            dosf.servidor.fotos.has(conDos.foto) && !dosf.servidor.fotos.has(conDos.foto2));
+
+  dd.querySelector('#colaWrap .mini-et.pon[data-slot="2"]').click();
+  eligeUna({ d: dd, w: dosf.w }, 'otra.jpg');
+  await espera(700);
+  const segunda = dosf.servidor.datos.etiquetas[0].foto2;
+  comprueba('se le puede enganchar una segunda después', !!segunda);
+
+  // Otro guardado cualquiera: si el barrido no conociera la segunda, aquí la
+  // dejaría en una miniatura que ya no abre nada.
+  escribeD('#mUsuario', 'otra-mas');
+  d$('#btnAñadir').click();
+  await espera(700);
+  comprueba('el barrido NO se lleva la segunda captura', dosf.servidor.fotos.has(segunda));
+
+  d$('#btnImprimir').click();
+  await espera(700);
+  comprueba('la segunda viaja con la etiqueta a la venta guardada',
+            dosf.servidor.datos.historico[0].etiquetas[0].foto2 === segunda,
+            dosf.servidor.datos.historico[0].etiquetas[0].foto2);
+  comprueba('y sigue viva después de archivarla', dosf.servidor.fotos.has(segunda));
 
   console.log('');
   console.log(fallos === 0 ? `TODO EN VERDE — ${ok} comprobaciones` : `${fallos} FALLOS de ${ok + fallos}`);

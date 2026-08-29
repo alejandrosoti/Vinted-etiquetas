@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tatuajes">
+<meta name="theme-color" content="#141419">
+<title>Probador de tatuajes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141419; --sup:#1D1D25; --bor:#33333F; --tx:#F2EFEA; --tx2:#8E8B9A;
+  --acc:#7C5CFF; --mal:#E2536B; --bien:#3FB27F; --r:14px; --r2:10px;
+}
+*{box-sizing:border-box}
+/* Varias reglas de aquí ponen display, y eso pisa el hidden del navegador. */
+[hidden]{display:none!important}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font-family:Archivo,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-weight:500; font-size:16px; line-height:1.45;
+  -webkit-text-size-adjust:100%;
+}
+.mono{font-family:"Space Mono",ui-monospace,Menlo,Consolas,monospace}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select{font:inherit}
+
+.wrap{max-width:660px;margin:0 auto;padding:0 14px calc(40px + env(safe-area-inset-bottom))}
+.top{padding:calc(18px + env(safe-area-inset-top)) 0 14px}
+.top h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
+.top h1 small{display:block;font-size:12px;font-weight:500;color:var(--tx2);letter-spacing:0;margin-top:2px}
+
+.card{background:var(--sup);border:1px solid var(--bor);border-radius:var(--r);padding:15px;margin-bottom:14px}
+.card > h2{margin:0 0 12px;font-size:13px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2)}
+.ayuda{margin:10px 0 0;font-size:13px;color:var(--tx2)}
+.ayuda:first-child{margin-top:0;margin-bottom:12px}
+
+/* ---------- Botones ---------- */
+.bt{
+  background:var(--bg);border:1px solid var(--bor);border-radius:var(--r2);
+  padding:13px 14px;font-weight:600;font-size:14px;min-height:50px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+}
+.bt.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:800}
+.bt.ancho{width:100%}
+.bt:disabled{opacity:.4;cursor:not-allowed}
+.acciones{display:grid;gap:9px}
+
+/* ---------- Escena ---------- */
+.escena{
+  background:#000;border:1px solid var(--bor);border-radius:var(--r);
+  overflow:hidden;margin-bottom:12px;position:relative;
+}
+#lienzo{
+  display:block;margin:0 auto;max-width:100%;max-height:62vh;
+  touch-action:none;-webkit-user-select:none;user-select:none;
+}
+#video{position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
+.pista{
+  margin:0;padding:8px 12px;font-size:12px;color:var(--tx2);
+  border-top:1px solid var(--bor);background:var(--sup);text-align:center;
+}
+
+.barra{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:14px}
+.barra .bt{width:100%}
+#btnGuardar{grid-column:1/-1}
+
+/* ---------- Tira de diseños ---------- */
+.tira{display:flex;gap:9px;overflow-x:auto;padding-bottom:4px;margin-bottom:11px}
+.tira:empty{display:none}
+.tira .hueco{position:relative;flex:0 0 auto}
+.tira .hueco > button.mini{
+  width:66px;height:66px;padding:0;border-radius:var(--r2);
+  border:2px solid var(--bor);background:#fff;overflow:hidden;display:block;
+}
+.tira .hueco > button.mini img{width:100%;height:100%;object-fit:contain;display:block}
+.tira .hueco.sel > button.mini{border-color:var(--acc)}
+.tira .hueco > button.quita{
+  position:absolute;top:-6px;right:-6px;width:24px;height:24px;padding:0;
+  border-radius:50%;border:1px solid var(--bor);background:var(--bg);
+  font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;
+}
+
+/* ---------- Controles ---------- */
+.ctl{display:block;margin-bottom:13px}
+.ctl:last-child{margin-bottom:0}
+.ctl > span{display:flex;justify-content:space-between;font-size:13px;color:var(--tx2);margin-bottom:6px}
+.ctl > span b{font-weight:700;color:var(--tx)}
+input[type=range]{width:100%;accent-color:var(--acc);margin:0}
+.pareja{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px}
+.marca{
+  display:flex;align-items:center;gap:9px;font-size:14px;
+  background:var(--bg);border:1px solid var(--bor);border-radius:var(--r2);padding:11px 12px;min-height:50px;
+}
+.marca input[type=checkbox]{width:18px;height:18px;accent-color:var(--acc);margin:0}
+.marca input[type=color]{width:34px;height:26px;padding:0;border:none;background:none}
+.marca.apagada{opacity:.4}
+select{
+  width:100%;background:var(--bg);border:1px solid var(--bor);border-radius:var(--r2);
+  color:var(--tx);padding:12px;min-height:50px;
+}
+#ajustes.sinCapa{display:none}
+.vacio{font-size:13px;color:var(--tx2);margin:0}
+
+/* ---------- Avisos ---------- */
+.aviso{
+  border-radius:var(--r2);padding:11px 13px;margin-bottom:12px;font-size:14px;
+  border:1px solid var(--bor);background:var(--sup);
+}
+.aviso.mal{border-color:var(--mal);color:#FFD7DE}
+.aviso.bien{border-color:var(--bien);color:#CFF0E2}
+.pie{margin:18px 0 0;font-size:12px;color:var(--tx2);text-align:center}
+.pie a{color:var(--tx2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Probador de tatuajes
+      <small>Míralo en tu piel antes de la aguja. Todo pasa en este móvil: ninguna foto sale de aquí.</small>
+    </h1>
+  </header>
+
+  <div id="aviso" class="aviso" hidden></div>
+
+  <section id="inicio" class="card">
+    <h2>La piel</h2>
+    <p class="ayuda">Enfoca la parte del cuerpo que quieras tatuar, o tira de una foto que ya tengas.</p>
+    <div class="acciones">
+      <button id="btnCamara" class="bt pri ancho">Abrir la cámara</button>
+      <button id="btnFoto" class="bt ancho">Elegir una foto</button>
+    </div>
+  </section>
+
+  <section id="editor" hidden>
+
+    <div class="escena">
+      <canvas id="lienzo" width="900" height="1200"></canvas>
+      <p id="pista" class="pista">Arrastra el diseño. Con dos dedos lo giras y lo agrandas.</p>
+    </div>
+
+    <div class="barra">
+      <button id="btnCongelar" class="bt pri" hidden>Congelar</button>
+      <button id="btnGirarCam" class="bt" hidden>Otra cámara</button>
+      <button id="btnComparar" class="bt">Ver sin tatuaje</button>
+      <button id="btnOtraBase" class="bt">Cambiar la foto</button>
+      <button id="btnGuardar" class="bt pri">Guardar</button>
+    </div>
+
+    <div class="card">
+      <h2>Diseños</h2>
+      <div id="tira" class="tira"></div>
+      <p id="sinDisenyos" class="vacio">Todavía no has puesto ninguno.</p>
+      <button id="btnDisenyo" class="bt ancho" style="margin-top:11px">Añadir diseño</button>
+      <p class="ayuda">Vale la foto del diseño en papel: se le quita el fondo blanco solo.</p>
+    </div>
+
+    <div class="card sinCapa" id="ajustes">
+      <h2>El diseño elegido</h2>
+
+      <label class="ctl"><span>Tamaño <b id="vTam">40%</b></span>
+        <input id="ctlTam" type="range" min="5" max="180" value="40"></label>
+
+      <label class="ctl"><span>Giro <b id="vGiro">0°</b></span>
+        <input id="ctlGiro" type="range" min="-180" max="180" value="0"></label>
+
+      <label class="ctl"><span>Opacidad <b id="vOp">85%</b></span>
+        <input id="ctlOp" type="range" min="10" max="100" value="85"></label>
+
+      <label class="ctl" id="ctlUmbWrap"><span>Recorte del fondo <b id="vUmb">65%</b></span>
+        <input id="ctlUmb" type="range" min="10" max="100" value="65"></label>
+
+      <div class="pareja">
+        <label class="marca"><input id="chkFondo" type="checkbox" checked> Quitar el fondo</label>
+        <label class="marca" id="marcaTinta"><input id="chkTinta" type="checkbox">
+          Tinta <input id="colTinta" type="color" value="#1a1a1a"></label>
+      </div>
+
+      <div class="pareja">
+        <button id="btnEspejo" class="bt">Espejo</button>
+        <button id="btnQuitar" class="bt">Quitar diseño</button>
+      </div>
+
+      <label class="ctl"><span>Cómo se funde con la piel</span>
+        <select id="selModo">
+          <option value="multiply">Como tinta (recomendado)</option>
+          <option value="darken">Solo oscurece</option>
+          <option value="source-over">Pegatina</option>
+        </select></label>
+    </div>
+
+    <p class="pie">Esto es una prueba, no una promesa: la piel se mueve, el pelo tapa y la tinta se abre con los años.</p>
+  </section>
+
+</div>
+
+<input id="filBase" type="file" accept="image/*" hidden>
+<input id="filDisenyo" type="file" accept="image/*" multiple hidden>
+<video id="video" playsinline muted autoplay></video>
+<a id="descarga" hidden></a>
+
+<script>
+/* Probador de tatuajes. Un archivo suelto, sin build y sin servidor: las fotos
+   se abren, se dibujan y se guardan en el propio móvil. Nada se sube a ningún
+   sitio, que para eso es la piel de uno. */
+(function(){
+'use strict';
+
+const $ = s => document.querySelector(s);
+const lienzo = $('#lienzo');
+const ctx = lienzo.getContext('2d');
+const video = $('#video');
+const MAX = 1600;                       // lado máximo con el que se trabaja
+const pideCuadro = window.requestAnimationFrame
+  ? window.requestAnimationFrame.bind(window)
+  : (fn => setTimeout(fn, 40));
+
+const estado = {
+  base: null,        // lienzo con la foto ya escalada
+  tipo: null,        // 'foto' | 'camara'
+  frontal: false,
+  stream: null,
+  capas: [],
+  activa: -1,
+  comparando: false,
+  enBucle: false
+};
+window.__tat = estado;                  // lo lee la prueba de humo, nada más
+
+/* ---------- Avisos ---------- */
+let avisoTimer = 0;
+function aviso(texto, clase){
+  const c = $('#aviso');
+  clearTimeout(avisoTimer);
+  if (!texto){ c.hidden = true; c.textContent = ''; return; }
+  c.className = 'aviso' + (clase ? ' ' + clase : '');
+  c.textContent = texto;
+  c.hidden = false;
+  if (clase === 'bien') avisoTimer = setTimeout(() => { c.hidden = true; }, 4000);
+}
+
+/* ---------- Abrir archivos ---------- */
+function leeImagen(archivo){
+  return new Promise((cumple, falla) => {
+    if (!archivo || (archivo.type && archivo.type.indexOf('image') !== 0))
+      return falla(new Error('Eso no es una imagen.'));
+    const lector = new FileReader();
+    lector.onerror = () => falla(new Error('No he podido abrir el archivo.'));
+    lector.onload = () => {
+      const img = new Image();
+      img.onload = () => cumple(img);
+      img.onerror = () => falla(new Error('La imagen está rota.'));
+      img.src = lector.result;
+    };
+    lector.readAsDataURL(archivo);
+  });
+}
+
+/* Deja la foto en un lienzo de como mucho MAX de lado: el móvil no necesita
+   mover 12 megapíxeles para enseñarte un tatuaje. */
+function encoge(fuente){
+  const w0 = fuente.naturalWidth || fuente.width || 1;
+  const h0 = fuente.naturalHeight || fuente.height || 1;
+  const k = Math.min(1, MAX / Math.max(w0, h0));
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(w0 * k));
+  cv.height = Math.max(1, Math.round(h0 * k));
+  const cx = cv.getContext('2d');
+  if (cx && cx.drawImage) cx.drawImage(fuente, 0, 0, cv.width, cv.height);
+  return cv;
+}
+
+/* ---------- La base (la piel) ---------- */
+function ponFoto(img){
+  paraCamara();
+  estado.base = encoge(img);
+  estado.tipo = 'foto';
+  lienzo.width = estado.base.width;
+  lienzo.height = estado.base.height;
+  abreEditor();
+  pinta();
+}
+
+function abreEditor(){
+  $('#inicio').hidden = true;
+  $('#editor').hidden = false;
+  const enCamara = estado.tipo === 'camara';
+  $('#btnCongelar').hidden = !enCamara;
+  $('#btnGirarCam').hidden = !enCamara;
+  $('#pista').textContent = enCamara
+    ? 'Cuando lo tengas colocado, congela la imagen.'
+    : 'Arrastra el diseño. Con dos dedos lo giras y lo agrandas.';
+}
+
+async function abreCamara(){
+  const md = navigator.mediaDevices;
+  if (!md || !md.getUserMedia){
+    aviso('Este navegador no me deja usar la cámara. Elige una foto de la galería.', 'mal');
+    return;
+  }
+  try{
+    paraCamara();
+    const stream = await md.getUserMedia({
+      video: { facingMode: estado.frontal ? 'user' : 'environment',
+               width: { ideal: 1280 }, height: { ideal: 1280 } },
+      audio: false
+    });
+    estado.stream = stream;
+    estado.tipo = 'camara';
+    video.srcObject = stream;
+    if (video.play) { const p = video.play(); if (p && p.catch) p.catch(() => {}); }
+    aviso('');
+    abreEditor();
+    arrancaBucle();
+  }catch(e){
+    const n = e && e.name;
+    aviso(n === 'NotAllowedError' ? 'No me has dado permiso para la cámara. Puedes elegir una foto de la galería.'
+        : n === 'NotFoundError'   ? 'No encuentro ninguna cámara en este aparato.'
+        : 'La cámara no ha arrancado. Prueba con una foto de la galería.', 'mal');
+  }
+}
+
+function paraCamara(){
+  if (estado.stream){
+    (estado.stream.getTracks ? estado.stream.getTracks() : []).forEach(t => t.stop && t.stop());
+    estado.stream = null;
+  }
+  video.srcObject = null;
+}
+
+function congela(){
+  if (estado.tipo !== 'camara') return;
+  const cv = document.createElement('canvas');
+  cv.width = lienzo.width; cv.height = lienzo.height;
+  const cx = cv.getContext('2d');
+  dibujaBase(cx, cv.width, cv.height);
+  paraCamara();
+  estado.base = cv;
+  estado.tipo = 'foto';
+  abreEditor();
+  pinta();
+  aviso('Imagen congelada. Ahora colócalo con calma y guárdalo.', 'bien');
+}
+
+function arrancaBucle(){
+  if (estado.enBucle) return;
+  estado.enBucle = true;
+  const paso = () => {
+    if (estado.tipo !== 'camara'){ estado.enBucle = false; return; }
+    ajustaLienzoAlVideo();
+    pinta();
+    pideCuadro(paso);
+  };
+  pideCuadro(paso);
+}
+
+function ajustaLienzoAlVideo(){
+  const w = video.videoWidth || 0, h = video.videoHeight || 0;
+  if (!w || !h) return;
+  const k = Math.min(1, MAX / Math.max(w, h));
+  const nw = Math.round(w * k), nh = Math.round(h * k);
+  if (lienzo.width !== nw || lienzo.height !== nh){
+    lienzo.width = nw; lienzo.height = nh;
+  }
+}
+
+/* ---------- Los diseños ---------- */
+function nuevaCapa(img){
+  return {
+    img: img,
+    lienzo: null, ratio: 1, miniatura: '',
+    nx: 0.5, ny: 0.5,        // centro, en tanto por uno del lienzo
+    frac: 0.4,               // ancho, en tanto por uno del ancho del lienzo
+    rot: 0, alfa: 0.85, espejo: false, modo: 'multiply',
+    quitarFondo: null,       // null = aún no se ha decidido; lo decide procesa()
+    hayAlfa: undefined, umbral: 0.65, tinta: null
+  };
+}
+
+function añade(img){
+  const c = nuevaCapa(img);
+  procesa(c);
+  estado.capas.push(c);
+  estado.activa = estado.capas.length - 1;
+  pintaTira();
+  sincroniza();
+  pinta();
+}
+
+/* Quita el fondo blanco y, si se pide, tiñe la tinta. El papel escaneado nunca
+   es blanco del todo, así que el corte va por luminosidad y con un margen
+   blando: los bordes del trazo se quedan a medias en vez de dentados. */
+function procesa(c){
+  const src = c.img;
+  const w = Math.max(1, src.naturalWidth || src.width || 1);
+  const h = Math.max(1, src.naturalHeight || src.height || 1);
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d');
+  if (cx && cx.drawImage) cx.drawImage(src, 0, 0, w, h);
+
+  try{
+    const d = cx.getImageData(0, 0, w, h);
+    const p = d.data;
+    if (c.hayAlfa === undefined){
+      let alfa = false;
+      for (let i = 3; i < p.length; i += 40) if (p[i] < 240){ alfa = true; break; }
+      c.hayAlfa = alfa;
+      if (c.quitarFondo === null) c.quitarFondo = !alfa;   // un PNG ya recortado se deja en paz
+    }
+    if (c.quitarFondo){
+      const u = Math.max(1, c.umbral * 255);
+      for (let i = 0; i < p.length; i += 4){
+        const l = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+        let a = (u - l) / u;
+        if (a <= 0){ p[i + 3] = 0; continue; }
+        if (a > 1) a = 1;
+        // El píxel viene mezclado con el blanco del papel: se le descuenta.
+        for (let k = 0; k < 3; k++){
+          const v = (p[i + k] - 255 * (1 - a)) / a;
+          p[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+        }
+        p[i + 3] = Math.round(a * p[i + 3]);
+      }
+    }
+    cx.putImageData(d, 0, 0);
+  }catch(e){
+    // Sin getImageData (navegador raro o imagen de otro dominio) se deja tal cual.
+    if (c.quitarFondo === null) c.quitarFondo = false;
+    if (c.hayAlfa === undefined) c.hayAlfa = false;
+  }
+
+  if (c.tinta && (c.quitarFondo || c.hayAlfa) && cx && cx.fillRect){
+    cx.globalCompositeOperation = 'source-in';
+    cx.fillStyle = c.tinta;
+    cx.fillRect(0, 0, w, h);
+    cx.globalCompositeOperation = 'source-over';
+  }
+
+  c.lienzo = cv;
+  c.ratio = h / w;
+  c.miniatura = haceMiniatura(cv);
+}
+
+function haceMiniatura(cv){
+  try{
+    const k = Math.min(1, 132 / Math.max(cv.width, cv.height));
+    const m = document.createElement('canvas');
+    m.width = Math.max(1, Math.round(cv.width * k));
+    m.height = Math.max(1, Math.round(cv.height * k));
+    m.getContext('2d').drawImage(cv, 0, 0, m.width, m.height);
+    return m.toDataURL('image/png');
+  }catch(e){ return ''; }
+}
+
+function capaActiva(){ return estado.capas[estado.activa] || null; }
+
+function geometria(c){
+  const ancho = c.frac * lienzo.width;
+  return { x: c.nx * lienzo.width, y: c.ny * lienzo.height, ancho: ancho, alto: ancho * c.ratio };
+}
+
+/* ---------- Pintar ---------- */
+function dibujaBase(cx, w, h){
+  cx.fillStyle = '#000';
+  cx.fillRect(0, 0, w, h);
+  if (estado.tipo === 'camara'){
+    if (!video.videoWidth) return;
+    cx.save();
+    if (estado.frontal){ cx.translate(w, 0); cx.scale(-1, 1); }   // espejo, como el de casa
+    cx.drawImage(video, 0, 0, w, h);
+    cx.restore();
+  } else if (estado.base){
+    cx.drawImage(estado.base, 0, 0, w, h);
+  }
+}
+
+function pinta(limpio){
+  const w = lienzo.width, h = lienzo.height;
+  if (!ctx) return;
+  dibujaBase(ctx, w, h);
+  if (estado.comparando && !limpio) return;
+
+  estado.capas.forEach((c, i) => {
+    if (!c.lienzo) return;
+    const g = geometria(c);
+    ctx.save();
+    ctx.globalAlpha = c.alfa;
+    ctx.globalCompositeOperation = c.modo;
+    ctx.translate(g.x, g.y);
+    ctx.rotate(c.rot);
+    if (c.espejo) ctx.scale(-1, 1);
+    ctx.drawImage(c.lienzo, -g.ancho / 2, -g.alto / 2, g.ancho, g.alto);
+    ctx.restore();
+
+    if (!limpio && i === estado.activa && estado.capas.length > 1){
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.translate(g.x, g.y);
+      ctx.rotate(c.rot);
+      ctx.strokeStyle = 'rgba(124,92,255,.9)';
+      ctx.lineWidth = Math.max(2, w / 400);
+      if (ctx.setLineDash) ctx.setLineDash([10, 8]);
+      ctx.strokeRect(-g.ancho / 2, -g.alto / 2, g.ancho, g.alto);
+      ctx.restore();
+    }
+  });
+}
+
+function pintaTira(){
+  const tira = $('#tira');
+  tira.innerHTML = '';
+  estado.capas.forEach((c, i) => {
+    const hueco = document.createElement('div');
+    hueco.className = 'hueco' + (i === estado.activa ? ' sel' : '');
+    const b = document.createElement('button');
+    b.className = 'mini';
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Diseño ' + (i + 1));
+    b.dataset.i = String(i);
+    const im = document.createElement('img');
+    im.alt = '';
+    if (c.miniatura) im.src = c.miniatura;
+    b.appendChild(im);
+    b.addEventListener('click', () => { estado.activa = i; pintaTira(); sincroniza(); pinta(); });
+    const q = document.createElement('button');
+    q.className = 'quita';
+    q.type = 'button';
+    q.textContent = '×';
+    q.setAttribute('aria-label', 'Quitar el diseño ' + (i + 1));
+    q.addEventListener('click', ev => { ev.stopPropagation(); quita(i); });
+    hueco.appendChild(b);
+    hueco.appendChild(q);
+    tira.appendChild(hueco);
+  });
+  $('#sinDisenyos').hidden = estado.capas.length > 0;
+}
+
+function quita(i){
+  estado.capas.splice(i, 1);
+  if (estado.activa >= estado.capas.length) estado.activa = estado.capas.length - 1;
+  pintaTira();
+  sincroniza();
+  pinta();
+}
+
+/* ---------- Controles ---------- */
+function sincroniza(){
+  const c = capaActiva();
+  $('#ajustes').classList.toggle('sinCapa', !c);
+  if (!c) return;
+  $('#ctlTam').value = Math.round(c.frac * 100);
+  $('#vTam').textContent = Math.round(c.frac * 100) + '%';
+  $('#ctlGiro').value = Math.round(c.rot * 180 / Math.PI);
+  $('#vGiro').textContent = Math.round(c.rot * 180 / Math.PI) + '°';
+  $('#ctlOp').value = Math.round(c.alfa * 100);
+  $('#vOp').textContent = Math.round(c.alfa * 100) + '%';
+  $('#ctlUmb').value = Math.round(c.umbral * 100);
+  $('#vUmb').textContent = Math.round(c.umbral * 100) + '%';
+  $('#chkFondo').checked = !!c.quitarFondo;
+  $('#ctlUmbWrap').hidden = !c.quitarFondo;
+  $('#chkTinta').checked = !!c.tinta;
+  if (c.tinta) $('#colTinta').value = c.tinta;
+  const puedeTeñir = !!(c.quitarFondo || c.hayAlfa);
+  $('#marcaTinta').classList.toggle('apagada', !puedeTeñir);
+  $('#chkTinta').disabled = !puedeTeñir;
+  $('#btnEspejo').setAttribute('aria-pressed', c.espejo ? 'true' : 'false');
+  $('#selModo').value = c.modo;
+}
+
+function conCapa(fn){
+  return function(){
+    const c = capaActiva();
+    if (!c) return;
+    fn(c, this);
+    sincroniza();
+    pinta();
+  };
+}
+
+$('#ctlTam').addEventListener('input', conCapa((c, el) => { c.frac = Number(el.value) / 100; }));
+$('#ctlGiro').addEventListener('input', conCapa((c, el) => { c.rot = Number(el.value) * Math.PI / 180; }));
+$('#ctlOp').addEventListener('input', conCapa((c, el) => { c.alfa = Number(el.value) / 100; }));
+$('#ctlUmb').addEventListener('input', conCapa((c, el) => { c.umbral = Number(el.value) / 100; procesa(c); pintaTira(); }));
+$('#chkFondo').addEventListener('change', conCapa((c, el) => { c.quitarFondo = el.checked; procesa(c); pintaTira(); }));
+$('#chkTinta').addEventListener('change', conCapa((c, el) => {
+  c.tinta = el.checked ? $('#colTinta').value : null; procesa(c); pintaTira();
+}));
+$('#colTinta').addEventListener('input', conCapa((c, el) => {
+  if (!$('#chkTinta').checked) return;
+  c.tinta = el.value; procesa(c); pintaTira();
+}));
+$('#btnEspejo').addEventListener('click', conCapa(c => { c.espejo = !c.espejo; }));
+$('#selModo').addEventListener('change', conCapa((c, el) => { c.modo = el.value; }));
+$('#btnQuitar').addEventListener('click', () => { if (capaActiva()) quita(estado.activa); });
+
+/* ---------- Dedos ---------- */
+const punteros = new Map();
+let pinza = null;
+
+function aLienzo(ev){
+  const r = lienzo.getBoundingClientRect();
+  const kx = r.width ? lienzo.width / r.width : 1;
+  const ky = r.height ? lienzo.height / r.height : 1;
+  return { x: (ev.clientX - r.left) * kx, y: (ev.clientY - r.top) * ky };
+}
+
+function cualHay(p){
+  for (let i = estado.capas.length - 1; i >= 0; i--){
+    const c = estado.capas[i], g = geometria(c);
+    const dx = p.x - g.x, dy = p.y - g.y;
+    const co = Math.cos(-c.rot), si = Math.sin(-c.rot);
+    const rx = dx * co - dy * si, ry = dx * si + dy * co;
+    if (Math.abs(rx) <= g.ancho / 2 && Math.abs(ry) <= g.alto / 2) return i;
+  }
+  return -1;
+}
+
+lienzo.addEventListener('pointerdown', ev => {
+  if (!estado.capas.length) return;
+  lienzo.setPointerCapture && lienzo.setPointerCapture(ev.pointerId);
+  const p = aLienzo(ev);
+  punteros.set(ev.pointerId, p);
+  if (punteros.size === 1){
+    const i = cualHay(p);
+    if (i >= 0 && i !== estado.activa){ estado.activa = i; pintaTira(); sincroniza(); pinta(); }
+  } else if (punteros.size === 2){
+    const c = capaActiva();
+    const [a, b] = [...punteros.values()];
+    pinza = c ? {
+      dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      ang: Math.atan2(b.y - a.y, b.x - a.x),
+      frac: c.frac, rot: c.rot
+    } : null;
+  }
+});
+
+lienzo.addEventListener('pointermove', ev => {
+  if (!punteros.has(ev.pointerId)) return;
+  const c = capaActiva();
+  if (!c) return;
+  const antes = punteros.get(ev.pointerId);
+  const p = aLienzo(ev);
+  punteros.set(ev.pointerId, p);
+
+  if (punteros.size === 1){
+    c.nx += (p.x - antes.x) / lienzo.width;
+    c.ny += (p.y - antes.y) / lienzo.height;
+    c.nx = Math.min(1.2, Math.max(-0.2, c.nx));
+    c.ny = Math.min(1.2, Math.max(-0.2, c.ny));
+  } else if (punteros.size === 2 && pinza){
+    const [a, b] = [...punteros.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const ang = Math.atan2(b.y - a.y, b.x - a.x);
+    c.frac = Math.min(1.8, Math.max(0.05, pinza.frac * (dist / pinza.dist)));
+    c.rot = pinza.rot + (ang - pinza.ang);
+  }
+  sincroniza();
+  pinta();
+});
+
+function suelta(ev){
+  punteros.delete(ev.pointerId);
+  if (punteros.size < 2) pinza = null;
+}
+lienzo.addEventListener('pointerup', suelta);
+lienzo.addEventListener('pointercancel', suelta);
+lienzo.addEventListener('pointerleave', suelta);
+
+lienzo.addEventListener('wheel', ev => {
+  const c = capaActiva();
+  if (!c) return;
+  ev.preventDefault();
+  c.frac = Math.min(1.8, Math.max(0.05, c.frac * (ev.deltaY > 0 ? 0.94 : 1.06)));
+  sincroniza();
+  pinta();
+}, { passive: false });
+
+/* ---------- Guardar ---------- */
+async function guarda(){
+  if (!estado.base && estado.tipo !== 'camara'){ aviso('Primero pon una foto.', 'mal'); return; }
+  pinta(true);                                  // sin el recuadro del elegido
+  const nombre = 'tatuaje-' + Date.now() + '.jpg';
+  const blob = await new Promise(r => {
+    if (lienzo.toBlob) lienzo.toBlob(r, 'image/jpeg', 0.92);
+    else r(null);
+  });
+  pinta();
+  if (!blob){ aviso('Este navegador no me deja guardar la imagen.', 'mal'); return; }
+
+  try{
+    const archivo = new File([blob], nombre, { type: 'image/jpeg' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [archivo] })){
+      await navigator.share({ files: [archivo] });
+      return;
+    }
+  }catch(e){
+    if (e && e.name === 'AbortError') return;   // le dio a cancelar, no es un fallo
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = $('#descarga');
+  a.href = url;
+  a.download = nombre;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  aviso('Guardada en tus descargas.', 'bien');
+}
+
+/* ---------- Botones de arriba ---------- */
+$('#btnCamara').addEventListener('click', abreCamara);
+$('#btnFoto').addEventListener('click', () => $('#filBase').click());
+$('#btnDisenyo').addEventListener('click', () => $('#filDisenyo').click());
+$('#btnCongelar').addEventListener('click', congela);
+$('#btnGirarCam').addEventListener('click', () => { estado.frontal = !estado.frontal; abreCamara(); });
+$('#btnOtraBase').addEventListener('click', () => {
+  paraCamara();
+  estado.tipo = null;
+  estado.base = null;
+  $('#editor').hidden = true;
+  $('#inicio').hidden = false;
+  aviso('');
+});
+$('#btnGuardar').addEventListener('click', guarda);
+$('#btnComparar').addEventListener('click', () => {
+  estado.comparando = !estado.comparando;
+  $('#btnComparar').textContent = estado.comparando ? 'Ver con tatuaje' : 'Ver sin tatuaje';
+  pinta();
+});
+
+$('#filBase').addEventListener('change', async ev => {
+  const f = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!f) return;
+  try{ ponFoto(await leeImagen(f)); aviso(''); }
+  catch(e){ aviso(e.message, 'mal'); }
+});
+
+$('#filDisenyo').addEventListener('change', async ev => {
+  const fotos = [...(ev.target.files || [])];
+  ev.target.value = '';
+  for (const f of fotos){
+    try{ añade(await leeImagen(f)); }
+    catch(e){ aviso(e.message, 'mal'); }
+  }
+});
+
+video.addEventListener('loadedmetadata', () => { ajustaLienzoAlVideo(); pinta(); });
+window.addEventListener('pagehide', paraCamara);
+
+sincroniza();
+pintaTira();
+})();
+</script>
+</body>
+</html>

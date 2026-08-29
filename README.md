@@ -238,9 +238,43 @@ de 297mm y derrama una tira en blanco en el papel siguiente. Con ocho por hoja
 no se notaba; con veinte salían tres hojas para veintiuna etiquetas. No lo
 toques aunque parezca que da igual.
 
+## Probador de tatuajes
+
+`tatuajes.html` es otra página suelta que va aparte de las etiquetas: enseña
+cómo quedaría un tatuaje en la piel antes de pisar el estudio. Se abre en
+`/tatuajes.html` y no habla con el servidor, ni con la función, ni con nadie:
+la foto se abre, se dibuja y se guarda en el propio móvil.
+
+Se pone la piel de dos maneras: **la cámara en directo**, que deja el diseño
+encima de lo que enfocas y se congela cuando lo tienes colocado, o **una foto**
+de la galería. Encima van los diseños: se arrastran con un dedo y con dos se
+giran y se agrandan, o se ajustan con los mandos si prefieres el número exacto.
+
+Vale la foto del diseño en papel, que es lo que suele haber: se le quita el
+fondo blanco solo. El corte va por luminosidad, con un margen blando para que
+el borde del trazo no salga dentado, y al píxel medio blanco se le descuenta el
+papel para que la línea recupere su negro. Si el PNG ya viene recortado se nota
+y no se toca. El mando **Recorte del fondo** sube o baja ese corte cuando el
+papel salió gris o el lápiz muy flojo.
+
+Por defecto se funde **como tinta** —multiplicando, que es lo que hace la
+piel: el color de debajo sigue viéndose— con la opacidad al 85 %. *Solo
+oscurece* respeta más los tonos claros y *pegatina* la pega tal cual, que sirve
+para ver el diseño limpio pero no para hacerse una idea. También se le puede
+poner un color de tinta, darle la vuelta con **Espejo** y quitarlo y ponerlo
+con **Ver sin tatuaje**, que para decidir hay que comparar.
+
+**Guardar** manda la imagen al menú de compartir del móvil si lo hay, y si no
+la baja como `tatuaje-<fecha>.jpg`. La cámara necesita `https` —en Netlify lo
+es— o `localhost`; si no hay permiso o no hay cámara, lo dice y te manda a la
+galería.
+
+Es una prueba, no una promesa: la piel se mueve, el pelo tapa y la tinta se
+abre con los años.
+
 ## La prueba
 
-`index.html` no depende de nada, pero la prueba sí:
+`index.html` y `tatuajes.html` no dependen de nada, pero las pruebas sí:
 
 ```bash
 npm i        # una vez, instala jsdom
@@ -256,7 +290,14 @@ quitar su etiqueta pero sobrevive si una venta la menciona, que se puede
 enganchar y cambiar después dejando limpia la anterior, que en la hoja de
 impresión no se cuela ninguna imagen, y todo el flujo de ventas guardadas.
 
-Pásala siempre antes de un `push`. Existe porque una vez se subió el archivo con
+`npm test` pasa las dos: la de las etiquetas y la de `tatuajes.html`
+(`prueba-tatuajes.js`), que comprueba que la página arranca, que la foto se
+encoge, que el fondo blanco se va y la tinta se queda, que los mandos y el
+arrastre mueven el diseño, que guardar saca un archivo y que la cámara se pide,
+se gira, se congela y se apaga —y que cuando no hay permiso lo dice en vez de
+quedarse a medias.
+
+Pásalas siempre antes de un `push`. Existe porque una vez se subió el archivo con
 medio JavaScript borrado: la sintaxis era válida, `node --check` daba el visto
 bueno, y la página estaba muerta en producción sin que nadie se enterara hasta
 abrirla en el navegador.

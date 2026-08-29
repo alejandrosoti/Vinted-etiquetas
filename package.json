@@ -1,9 +1,11 @@
 {
   "name": "vinted-etiquetas",
   "private": true,
-  "description": "Solo para la prueba de humo. index.html no depende de nada de esto.",
+  "description": "Solo para la prueba de humo. index.html y tatuajes.html no dependen de nada de esto.",
   "scripts": {
-    "test": "node prueba.js"
+    "test": "node prueba.js && node prueba-tatuajes.js",
+    "test:etiquetas": "node prueba.js",
+    "test:tatuajes": "node prueba-tatuajes.js"
   },
   "devDependencies": {
     "jsdom": "^27.0.0"
